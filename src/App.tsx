@@ -840,60 +840,51 @@ export default function App() {
       {/* Main Content Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6 space-y-4 sm:space-y-6">
         
-        {/* Global Month Selection & Period Bar */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700 shrink-0">
-              <Calendar className="w-5 h-5" />
+        {/* Global Month Selection & Period Bar - Ringkas & Bersih */}
+        <div className="bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700 shrink-0">
+              <Calendar className="w-4 h-4" />
             </div>
-            <div>
-              <div className="flex items-center space-x-2 flex-wrap">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Periode Aktif:
-                </span>
-                <span className="text-sm sm:text-base font-extrabold text-blue-800">
-                  {formatMonthYearIndonesian(selectedMonth)}
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 font-mono">
-                  {selectedMonth}
-                </span>
+            <div className="flex items-center space-x-2 flex-wrap">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Periode:
+              </span>
+              <span className="text-sm font-extrabold text-blue-900">
+                {formatMonthYearIndonesian(selectedMonth)}
+              </span>
 
-                {/* Badge otomatis bulan berjalan laptop */}
-                {selectedMonth === currentLaptopMonth ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center space-x-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>Bulan Berjalan Laptop</span>
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => setSelectedMonth(currentLaptopMonth)}
-                    className="px-2.5 py-0.5 text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-2xs flex items-center space-x-1 active:scale-95 transition cursor-pointer"
-                    title="Klik untuk langsung kembali ke bulan & tahun laptop saat ini tanpa perlu menggeser"
-                  >
-                    <Calendar className="w-3 h-3" />
-                    <span>Kembali ke Bulan Ini ({formatMonthYearIndonesian(currentLaptopMonth)})</span>
-                  </button>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {filteredMonthlyRecap.length > 0 
-                  ? `Menampilkan ${filteredMonthlyRecap.length} data rekaman produksi pada bulan ini.`
-                  : `Tampilan otomatis pada bulan berjalan laptop. Data siap untuk pengisian hari ini.`}
-              </p>
+              {/* Status bulan berjalan laptop */}
+              {selectedMonth === currentLaptopMonth ? (
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center space-x-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Bulan Berjalan</span>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSelectedMonth(currentLaptopMonth)}
+                  className="px-2 py-0.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-2xs flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                  title="Kembali ke bulan berjalan laptop saat ini"
+                >
+                  <Calendar className="w-3 h-3" />
+                  <span>Ke Bulan Ini</span>
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap">
+          <div className="flex items-center space-x-1.5 flex-wrap sm:flex-nowrap">
             <button
+              type="button"
               onClick={() => setSelectedMonth(getPreviousMonth(selectedMonth))}
-              className="px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center space-x-1 active:scale-95 cursor-pointer"
+              className="p-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center active:scale-95 cursor-pointer"
               title="Bulan Sebelumnya"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Bulan Lalu</span>
+              <ChevronLeft className="w-4 h-4" />
             </button>
             
-            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1">
+            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
               <input
                 type="month"
                 value={selectedMonth}
@@ -904,61 +895,57 @@ export default function App() {
             </div>
 
             <button
+              type="button"
               onClick={() => setSelectedMonth(getNextMonth(selectedMonth))}
-              className="px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center space-x-1 active:scale-95 cursor-pointer"
+              className="p-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center active:scale-95 cursor-pointer"
               title="Bulan Berikutnya"
             >
-              <span className="hidden sm:inline">Bulan Depan</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
 
             <button
+              type="button"
               onClick={() => setIsBackupModalOpen(true)}
-              className="px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg transition-colors flex items-center space-x-1 active:scale-95 ml-auto sm:ml-2 cursor-pointer"
-              title="Cadangkan & Pulihkan Data Lokal (Offline Tanpa Cloud)"
+              className="px-2.5 py-1 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg transition-colors flex items-center space-x-1 active:scale-95 ml-auto sm:ml-1 cursor-pointer"
+              title="Cadangan Offline"
             >
               <HardDrive className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="hidden sm:inline">Cadangan Offline</span>
+              <span className="hidden sm:inline">Cadangan</span>
             </button>
 
             <button
+              type="button"
               onClick={handleClearAllData}
-              className="px-2.5 py-1.5 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg transition-colors flex items-center space-x-1 active:scale-95 cursor-pointer"
+              className="px-2.5 py-1 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg transition-colors flex items-center space-x-1 active:scale-95 cursor-pointer"
               title="Kosongkan Semua Data"
             >
               <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-              <span>Kosongkan</span>
+              <span>Reset</span>
             </button>
           </div>
         </div>
 
-        {/* Notifikasi Informasi Jika Bulan Berjalan Masih Kosong namun Tersedia Data Lama di Bulan Lain */}
+        {/* Notifikasi Informasi Jika Bulan Berjalan Masih Kosong namun Tersedia Data Lama di Bulan Lain - Ringkas */}
         {filteredMonthlyRecap.length === 0 && otherMonthsWithData.length > 0 && (
-          <div className="bg-blue-50/90 border border-blue-200 rounded-xl p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs animate-in fade-in duration-200 shadow-2xs">
-            <div className="flex items-start sm:items-center space-x-2.5">
-              <div className="p-1 rounded-lg bg-blue-100 text-blue-700 shrink-0">
-                <Info className="w-4 h-4" />
-              </div>
-              <div className="text-slate-700 leading-relaxed">
-                <span className="font-extrabold text-blue-900 block sm:inline">
-                  Tampilan disesuaikan ke bulan berjalan laptop ({formatMonthYearIndonesian(selectedMonth)}).
-                </span>{' '}
-                <span>
-                  Data lama Anda ({monthlyRecap.length} baris) tetap aman tersimpan saat sinkronisasi GitHub dan tidak hilang.
-                </span>{' '}
-                <span className="text-slate-500 font-semibold">
-                  (Tersedia di: {otherMonthsWithData.slice(0, 3).map(m => formatMonthYearIndonesian(m)).join(', ')})
-                </span>
-              </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center space-x-2 text-slate-600">
+              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+              <span className="font-semibold text-slate-800">
+                Bulan berjalan ({formatMonthYearIndonesian(selectedMonth)})
+              </span>
+              <span className="text-slate-400">·</span>
+              <span className="text-slate-500">
+                Data lama tersimpan ({otherMonthsWithData.slice(0, 2).map(m => formatMonthYearIndonesian(m)).join(', ')})
+              </span>
             </div>
 
-            <div className="flex items-center space-x-2 shrink-0 self-end md:self-auto">
+            <div className="flex items-center space-x-2">
               <button
                 type="button"
                 onClick={() => setSelectedMonth(otherMonthsWithData[0])}
-                className="px-3 py-1.5 bg-white hover:bg-slate-100 text-blue-800 border border-blue-200 font-bold rounded-lg shadow-2xs transition active:scale-95 cursor-pointer text-xs"
+                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-blue-800 border border-slate-200 font-bold rounded-lg text-xs"
               >
-                Buka Data {formatMonthYearIndonesian(otherMonthsWithData[0])}
+                Lihat {formatMonthYearIndonesian(otherMonthsWithData[0])}
               </button>
               <button
                 type="button"
@@ -967,7 +954,7 @@ export default function App() {
                   setPreselectedBankModel(null);
                   setIsInputModalOpen(true);
                 }}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-2xs transition active:scale-95 cursor-pointer text-xs flex items-center space-x-1"
+                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs flex items-center space-x-1"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>+ Input Hari Ini</span>
@@ -979,33 +966,28 @@ export default function App() {
         {/* Dynamic Tab Views */}
         {activeTab === 'overview' && (
           <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-150">
-            {/* Subheader / PT Teratai Widjaja Context Bar - Hanya Muncul di Tab Overview */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs">
-              <div className="flex items-center space-x-2.5 sm:space-x-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse shrink-0"></span>
-                <div>
-                  <div className="flex items-center space-x-1.5 sm:space-x-2">
-                    <h2 className="text-xs sm:text-sm font-extrabold text-[#1a3478] tracking-tight uppercase">
-                      PT TERATAI WIDJAJA
-                    </h2>
-                    <span className="text-slate-300">•</span>
-                    <span className="text-[11px] sm:text-xs font-bold text-blue-700">
-                      Sewing Production & Quality
-                    </span>
-                  </div>
-                  <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-                    Monitoring Aktual per Hari, Target Harian, Kolom Analisis Bottleneck & Bank Data Model
-                  </p>
+            {/* Subheader Context Bar - Bersih */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+              <div className="flex items-center space-x-2.5">
+                <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse shrink-0"></span>
+                <div className="flex items-center space-x-2">
+                  <h2 className="text-xs sm:text-sm font-extrabold text-[#1a3478] tracking-tight uppercase">
+                    PT TERATAI WIDJAJA
+                  </h2>
+                  <span className="text-slate-300">·</span>
+                  <span className="text-xs text-slate-500 font-medium">
+                    Monitoring Sewing &amp; SMV (10 Line)
+                  </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 text-xs w-full sm:w-auto">
+              <div className="flex items-center gap-2 text-xs">
                 <button
                   onClick={() => {
                     setEditingBankModel(null);
                     setIsBankDataModalOpen(true);
                   }}
-                  className="inline-flex items-center justify-center space-x-1.5 px-2.5 sm:px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg font-bold shadow-2xs active:scale-95 transition-all"
+                  className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg font-bold shadow-2xs active:scale-95 transition-all"
                 >
                   <Database className="w-3.5 h-3.5 text-blue-700" />
                   <span>+ Bank Data</span>
@@ -1016,17 +998,16 @@ export default function App() {
                     setPreselectedBankModel(null);
                     setIsInputModalOpen(true);
                   }}
-                  className="inline-flex items-center justify-center space-x-1.5 px-2.5 sm:px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow-2xs active:scale-95 transition-all"
+                  className="inline-flex items-center space-x-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow-2xs active:scale-95 transition-all"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span className="sm:hidden">+ Masukan Data</span>
-                  <span className="hidden sm:inline">+ Masukan Data Harian</span>
+                  <span>+ Input Harian</span>
                 </button>
                 <button
                   onClick={() => setIsSheetModalOpen(true)}
-                  className="col-span-2 sm:col-auto text-blue-700 hover:text-blue-800 font-semibold inline-flex items-center justify-center space-x-1 hover:underline py-1 sm:py-0 sm:ml-2"
+                  className="text-blue-700 hover:text-blue-800 font-semibold inline-flex items-center space-x-1 hover:underline ml-1"
                 >
-                  <span>{dataSource.isLive ? 'Pengaturan Sheet' : 'Hubungkan Sheet'}</span>
+                  <span>{dataSource.isLive ? 'Sheet Terhubung' : 'Hubungkan Sheet'}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1035,105 +1016,73 @@ export default function App() {
             {/* KPI Cards Grid */}
             <KpiSummary summary={summary} />
 
-            {/* Quick Action Highlights */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-              {/* Daily Output & Analysis Highlight Card */}
-              <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
-                <div className="h-1 w-full bg-linear-to-r from-blue-700 to-red-600 absolute top-0 left-0"></div>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-9 h-9 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0">
-                      <ClipboardList className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">
-                        Rekapitulasi Aktual per Hari & Kolom Analisis
-                      </h3>
-                      <p className="text-xs text-slate-500">
-                        {filteredMonthlyRecap.length} data masukan harian periode {formatMonthYearIndonesian(selectedMonth)}
-                      </p>
-                    </div>
+            {/* Quick Action Highlights - Bersih, Visual & Mudah Dipahami */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-3.5">
+              {/* Daily Output Card */}
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between hover:border-slate-300 transition-colors">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                    <ClipboardList className="w-4 h-4" />
                   </div>
-                  <button
-                    onClick={() => setActiveTab('monthly-recap')}
-                    className="w-full sm:w-auto px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-bold transition-colors inline-flex items-center justify-center space-x-1 shrink-0 active:scale-95"
-                  >
-                    <span>Buka Rekap Harian</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900">Rekap Harian</h3>
+                    <p className="text-[11px] text-slate-500 font-medium tabular-nums">{filteredMonthlyRecap.length} data masukan</p>
+                  </div>
                 </div>
+                <button
+                  onClick={() => setActiveTab('monthly-recap')}
+                  className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 transition active:scale-95 cursor-pointer"
+                  title="Buka Rekap Harian"
+                >
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               </div>
 
-              {/* Bank Data Highlight Card */}
-              <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
-                <div className="h-1 w-full bg-blue-600 absolute top-0 left-0"></div>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
-                      <Database className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">
-                        Bank Data Model & Target Standar
-                      </h3>
-                      <p className="text-xs text-slate-500">
-                        {bankDataModels.length} spesifikasi model & target kapasitas Industrial Engineering (IE)
-                      </p>
-                    </div>
+              {/* Bank Data Card */}
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between hover:border-slate-300 transition-colors">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+                    <Database className="w-4 h-4" />
                   </div>
-                  <button
-                    onClick={() => setActiveTab('bank-data')}
-                    className="w-full sm:w-auto px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition-colors inline-flex items-center justify-center space-x-1 shrink-0 active:scale-95"
-                  >
-                    <span>Kelola Bank Data</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900">Bank Data Model</h3>
+                    <p className="text-[11px] text-slate-500 font-medium tabular-nums">{bankDataModels.length} spesifikasi style</p>
+                  </div>
                 </div>
+                <button
+                  onClick={() => setActiveTab('bank-data')}
+                  className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition active:scale-95 cursor-pointer"
+                  title="Kelola Bank Data"
+                >
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               </div>
 
-              {/* Style Schedule & OT Highlight Card */}
-              <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden md:col-span-2">
-                <div className={`h-1 w-full absolute top-0 left-0 ${scheduleConflicts.length > 0 ? 'bg-red-600' : 'bg-emerald-600'}`}></div>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${scheduleConflicts.length > 0 ? 'bg-red-100 text-red-600' : 'bg-blue-50 text-blue-700'}`}>
-                      <Calendar className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <h3 className="text-sm font-bold text-slate-900">
-                          Jadwal Style Sewing & Kalender Line
-                        </h3>
-                        {scheduleConflicts.length > 0 && (
-                          <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-black animate-pulse">
-                            ⚡ {scheduleConflicts.length} Hari Overlap
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-500">
-                        {filteredStyleSchedules.length} alokasi style sewing dengan kalkulasi sisa target otomatis & visualisasi tumpang tindih per Line
-                      </p>
-                    </div>
+              {/* Sewing Schedule Card */}
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between hover:border-slate-300 transition-colors">
+                <div className="flex items-center space-x-2.5">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${scheduleConflicts.length > 0 ? 'bg-red-100 text-red-600' : 'bg-blue-50 text-blue-700'}`}>
+                    <Calendar className="w-4 h-4" />
                   </div>
-                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-                    <button
-                      onClick={() => {
-                        setEditingSchedule(null);
-                        setIsScheduleModalOpen(true);
-                      }}
-                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-lg text-xs font-bold transition-colors text-center active:scale-95"
-                    >
-                      + Input Style
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('style-schedule')}
-                      className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold transition-colors inline-flex items-center justify-center space-x-1 shrink-0 shadow-2xs active:scale-95"
-                    >
-                      <span>Buka Kalender</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
+                  <div>
+                    <div className="flex items-center space-x-1.5">
+                      <h3 className="text-xs font-bold text-slate-900">Jadwal Sewing</h3>
+                      {scheduleConflicts.length > 0 && (
+                        <span className="px-1.5 py-0.2 rounded-full bg-red-600 text-white text-[9px] font-black">
+                          ⚡ {scheduleConflicts.length}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-medium tabular-nums">{dynamicallyAdjustedSchedules.length} alokasi style</p>
                   </div>
                 </div>
+                <button
+                  onClick={() => setActiveTab('style-schedule')}
+                  className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition active:scale-95 cursor-pointer"
+                  title="Buka Kalender Sewing"
+                >
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
 
@@ -1162,8 +1111,8 @@ export default function App() {
         {/* Tab: BANK DATA MANUAL STYLE & KALENDER HARIAN OT */}
         {activeTab === 'style-schedule' && (
           <StyleScheduleView
-            schedules={filteredStyleSchedules}
-            conflicts={scheduleConflicts}
+            schedules={dynamicallyAdjustedSchedules}
+            conflicts={dynamicScheduleConflicts}
             urgentNotifications={urgentNotifications}
             bankDataModels={bankDataModels}
             onAddNew={() => {
@@ -1180,6 +1129,8 @@ export default function App() {
             canInputData={currentUser.canInputData}
             onOpenCollisionModal={() => setIsCollisionModalOpen(true)}
             collisionAnalysis={peCollisionAnalysis}
+            selectedMonth={selectedMonth}
+            onMonthChange={setSelectedMonth}
           />
         )}
 

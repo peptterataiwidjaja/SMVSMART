@@ -157,20 +157,20 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
   return (
     <div className="space-y-6">
       
-      {/* Top Banner & Control Bar */}
-      <div className="bg-white p-3.5 sm:p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+      {/* Top Banner & Control Bar - Ringkas & Bersih */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-600 shrink-0"></span>
-            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight uppercase">
-              LEMBAR KERJA REKAP PRODUKTIVITAS & AKTUAL PERHARI
+            <span className="w-2.5 h-2.5 rounded-full bg-red-600 shrink-0"></span>
+            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
+              Rekap Produktivitas &amp; Aktual Harian
             </h2>
-            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+            <span className="hidden sm:inline-block px-2 py-0.5 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
               PT Teratai Widjaja
             </span>
           </div>
-          <p className="text-[11px] sm:text-xs text-slate-500 mt-1">
-            Monitoring aktual perhari periode {selectedMonth ? formatMonthYearIndonesian(selectedMonth) : 'aktif'}, target harian, dan evaluasi analisis operasional
+          <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+            Periode {selectedMonth ? formatMonthYearIndonesian(selectedMonth) : 'aktif'} · Output &amp; Evaluasi Harian
           </p>
         </div>
 
@@ -211,8 +211,8 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onMonthChange(getCurrentYearMonth())}
-                  className="hidden sm:inline-flex items-center space-x-1 px-2 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-2xs transition active:scale-95 cursor-pointer"
-                  title="Kembali ke bulan yang sedang berjalan di laptop"
+                  className="hidden sm:inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-2xs transition active:scale-95 cursor-pointer"
+                  title="Kembali ke bulan berjalan di laptop"
                 >
                   <Calendar className="w-3 h-3" />
                   <span>Bulan Ini</span>
@@ -253,18 +253,18 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
             </div>
           </div>
 
-          {/* Button: Masukan Perencanaan Bulanan, Tautkan GS & Input Harian */}
+          {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {onOpenSheetModal && (
               <button
                 type="button"
                 id="btn-recap-connect-gs"
                 onClick={onOpenSheetModal}
-                className="inline-flex items-center justify-center space-x-1.5 px-3 py-2 sm:py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
-                title="Pilihan Tautkan dengan Spreadsheet via Google Apps Script (.gs) atau Tautan Langsung"
+                className="inline-flex items-center justify-center space-x-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
+                title="Tautkan Spreadsheet (.gs)"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Tautkan Spreadsheet (.gs)</span>
+                <span>Spreadsheet</span>
               </button>
             )}
 
@@ -273,25 +273,24 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
                 {onOpenMonthlyPlan && (
                   <button
                     onClick={onOpenMonthlyPlan}
-                    className="inline-flex items-center justify-center space-x-1.5 px-3 py-2 sm:py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 w-full sm:w-auto cursor-pointer"
-                    title="Input Model, Target Order, Target Harian, SMV & Tanggal Mulai"
+                    className="inline-flex items-center justify-center space-x-1 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow-2xs active:scale-95 w-full sm:w-auto cursor-pointer"
                   >
                     <Layers className="w-3.5 h-3.5 text-blue-400" />
-                    <span>+ Perencanaan Bulanan</span>
+                    <span>+ Rencana</span>
                   </button>
                 )}
 
                 <button
                   onClick={onAddNew}
-                  className="inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm shadow-blue-200 active:scale-95 w-full sm:w-auto cursor-pointer"
+                  className="inline-flex items-center justify-center space-x-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-2xs active:scale-95 w-full sm:w-auto cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>+ Masukan Data Harian</span>
+                  <span>+ Input Harian</span>
                 </button>
               </>
             ) : (
-              <span className="px-3 py-2 sm:py-1.5 bg-slate-100 text-slate-500 rounded-lg text-xs font-semibold border border-slate-200 inline-flex items-center justify-center">
-                🔒 Akun Pantau (Read-Only)
+              <span className="px-3 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-xs font-semibold border border-slate-200 inline-flex items-center justify-center">
+                🔒 Read-Only
               </span>
             )}
           </div>

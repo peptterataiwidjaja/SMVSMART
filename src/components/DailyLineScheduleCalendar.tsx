@@ -28,6 +28,8 @@ interface DailyLineScheduleCalendarProps {
   canInputData?: boolean;
   onOpenCollisionModal?: () => void;
   collisionAnalysis?: PECollisionAnalysis;
+  selectedYearMonth?: string;
+  onMonthChange?: (yearMonth: string) => void;
 }
 
 export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps> = ({
@@ -37,14 +39,64 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
   onAddNewSchedule,
   canInputData = true,
   onOpenCollisionModal,
-  collisionAnalysis
+  collisionAnalysis,
+  selectedYearMonth,
+  onMonthChange
 }) => {
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth());
-  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
+  const currentLaptopMonth = now.getMonth();
+  const currentLaptopYear = now.getFullYear();
+  const currentLaptopDate = now.getDate();
+
+  // Inisialisasi sesuai bulan berjalan laptop atau props selectedYearMonth
+  const initialYear = selectedYearMonth ? parseInt(selectedYearMonth.split('-')[0], 10) : currentLaptopYear;
+  const initialMonth = selectedYearMonth ? parseInt(selectedYearMonth.split('-')[1], 10) - 1 : currentLaptopMonth;
+
+  const [selectedMonth, setSelectedMonth] = useState<number>(initialMonth);
+  const [selectedYear, setSelectedYear] = useState<number>(initialYear);
   const [filterLineId, setFilterLineId] = useState<number | 'all'>('all');
   const [filterMode, setFilterMode] = useState<'all' | 'overlaps_only'>('all');
   const [viewLayout, setViewLayout] = useState<'calendar' | 'agenda'>('calendar');
+
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Sync saat selectedYearMonth dari parent (App / Navbar) berubah
+  React.useEffect(() => {
+    if (selectedYearMonth) {
+      const parts = selectedYearMonth.split('-');
+      if (parts.length === 2) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        if (!isNaN(y) && !isNaN(m)) {
+          setSelectedYear(y);
+          setSelectedMonth(m);
+        }
+      }
+    }
+  }, [selectedYearMonth]);
+
+  const changeMonth = (newMonth: number, newYear: number) => {
+    setSelectedMonth(newMonth);
+    setSelectedYear(newYear);
+    if (onMonthChange) {
+      const ym = `${newYear}-${String(newMonth + 1).padStart(2, '0')}`;
+      onMonthChange(ym);
+    }
+  };
+
+  const isCurrentLaptopPeriod = selectedMonth === currentLaptopMonth && selectedYear === currentLaptopYear;
+  const isToday = (day: number) => isCurrentLaptopPeriod && day === currentLaptopDate;
+
+  // Auto-scroll horizontal ke kolom Hari Ini pada render awal atau saat kembali ke bulan ini
+  React.useEffect(() => {
+    if (isCurrentLaptopPeriod && viewLayout === 'calendar' && scrollContainerRef.current) {
+      // Offset 130px untuk sticky line col + estimasi per col ~35px
+      const targetScroll = Math.max(0, (currentLaptopDate - 3) * 36);
+      setTimeout(() => {
+        scrollContainerRef.current?.scrollTo({ left: targetScroll, behavior: 'smooth' });
+      }, 100);
+    }
+  }, [isCurrentLaptopPeriod, currentLaptopDate, viewLayout]);
 
   const [activeCellDetail, setActiveCellDetail] = useState<{
     dateStr: string;
@@ -83,13 +135,11 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
   const allLineIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const displayedLineIds = filterLineId === 'all' ? allLineIds : [filterLineId];
 
-  // Helper untuk mendapatkan style yang aktif pada tanggal dan line tertentu (Menyesuaikan dengan hasil rekap & sisa target)
+  // Helper untuk mendapatkan style yang aktif pada tanggal dan line tertentu
   const getLineDayContent = (lineId: number, dateStr: string) => {
     const lineSchedules = schedules.filter(s => s.lineId === lineId);
     
-    // Style aktif jika tanggal berada dalam rentang startDate s/d plannedEndDate atau projectedEndDate
     const activeStyles = lineSchedules.filter(s => {
-      // Jika style sudah rampung 100% dan tanggal ini melampaui tanggal selesai
       if (s.remainingQty <= 0 && s.projectedEndDate && dateStr > s.projectedEndDate) {
         return false;
       }
@@ -112,36 +162,37 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden font-['Plus_Jakarta_Sans',sans-serif]">
       
-      {/* Header Bar - Bersih & Elegan */}
-      <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/70">
+      {/* Header Bar - Simpel, Bersih & Menarik */}
+      <div className="p-3.5 sm:p-4 border-b border-slate-200 bg-slate-50/70">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#1a3478]"></span>
-              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
-                Kalender Jadwal Line Sewing
-              </h3>
-              <span className="text-[11px] font-semibold text-slate-500">
-                (Senin-Jumat 8 Jam • Sabtu 5 Jam • Minggu Libur)
+          <div className="flex items-center space-x-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#1a3478]"></span>
+            <h3 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
+              Kalender Jadwal Line Sewing
+            </h3>
+            {isCurrentLaptopPeriod && (
+              <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Bulan Berjalan</span>
               </span>
-            </div>
+            )}
           </div>
 
           {/* Controls: Month Picker, Filter Line & Layout */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {/* Month & Year Navigation */}
-            <div className="flex items-center space-x-1 bg-white border border-slate-300 rounded-lg p-1 shadow-2xs">
+            <div className="flex items-center space-x-1 bg-white border border-slate-200 rounded-lg p-1 shadow-2xs">
               <button
+                type="button"
                 onClick={() => {
                   if (selectedMonth === 0) {
-                    setSelectedMonth(11);
-                    setSelectedYear(prev => prev - 1);
+                    changeMonth(11, selectedYear - 1);
                   } else {
-                    setSelectedMonth(prev => prev - 1);
+                    changeMonth(selectedMonth - 1, selectedYear);
                   }
                 }}
-                className="p-1 hover:bg-slate-100 rounded text-slate-600"
+                className="p-1 hover:bg-slate-100 rounded text-slate-600 active:scale-95 transition-all"
                 title="Bulan Sebelumnya"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -149,7 +200,7 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
 
               <select
                 value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                onChange={(e) => changeMonth(Number(e.target.value), selectedYear)}
                 className="bg-transparent text-xs font-bold text-slate-800 px-1 py-0.5 focus:outline-hidden cursor-pointer"
               >
                 {[
@@ -162,7 +213,7 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
 
               <select
                 value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                onChange={(e) => changeMonth(selectedMonth, Number(e.target.value))}
                 className="bg-transparent text-xs font-bold text-slate-800 px-1 py-0.5 focus:outline-hidden cursor-pointer"
               >
                 {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map((yr) => (
@@ -171,23 +222,51 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
               </select>
 
               <button
+                type="button"
                 onClick={() => {
                   if (selectedMonth === 11) {
-                    setSelectedMonth(0);
-                    setSelectedYear(prev => prev + 1);
+                    changeMonth(0, selectedYear + 1);
                   } else {
-                    setSelectedMonth(prev => prev + 1);
+                    changeMonth(selectedMonth + 1, selectedYear);
                   }
                 }}
-                className="p-1 hover:bg-slate-100 rounded text-slate-600"
+                className="p-1 hover:bg-slate-100 rounded text-slate-600 active:scale-95 transition-all"
                 title="Bulan Berikutnya"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
 
+            {/* Tombol Cepat: Ke Hari Ini / Bulan Berjalan Laptop */}
+            {!isCurrentLaptopPeriod ? (
+              <button
+                type="button"
+                onClick={() => changeMonth(currentLaptopMonth, currentLaptopYear)}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-2xs transition active:scale-95 cursor-pointer flex items-center space-x-1"
+                title="Kembali ke bulan & hari ini pada laptop"
+              >
+                <CalendarIcon className="w-3.5 h-3.5" />
+                <span>Hari Ini</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  if (scrollContainerRef.current) {
+                    const targetScroll = Math.max(0, (currentLaptopDate - 3) * 36);
+                    scrollContainerRef.current.scrollTo({ left: targetScroll, behavior: 'smooth' });
+                  }
+                }}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition active:scale-95 cursor-pointer flex items-center space-x-1"
+                title="Fokuskan tampilan ke tanggal hari ini"
+              >
+                <CalendarIcon className="w-3.5 h-3.5 text-blue-600" />
+                <span>Tgl {currentLaptopDate}</span>
+              </button>
+            )}
+
             {/* Filter Line */}
-            <div className="flex items-center space-x-1 bg-white border border-slate-300 rounded-lg px-2.5 py-1 shadow-2xs">
+            <div className="flex items-center space-x-1 bg-white border border-slate-200 rounded-lg px-2 py-1 shadow-2xs">
               <Filter className="w-3 h-3 text-slate-400" />
               <select
                 value={filterLineId}
@@ -204,14 +283,14 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
             {/* Filter Overlap Saja */}
             <button
               onClick={() => setFilterMode(prev => prev === 'all' ? 'overlaps_only' : 'all')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors flex items-center space-x-1 ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors flex items-center space-x-1 ${
                 filterMode === 'overlaps_only'
                   ? 'bg-red-50 text-red-700 border-red-300'
-                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
               }`}
             >
               <Zap className="w-3 h-3 text-amber-500" />
-              <span>{filterMode === 'overlaps_only' ? 'Tampilkan Semua' : 'Filter Tumpang Tindih'}</span>
+              <span>{filterMode === 'overlaps_only' ? 'Semua' : 'Bentrok'}</span>
             </button>
 
             {/* Tombol Peringatan Cepat Tabrakan Jadwal PE */}
@@ -220,24 +299,24 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
                 type="button"
                 id="btn-calendar-pe-collision-alert"
                 onClick={onOpenCollisionModal}
-                className={`px-2.5 py-1 rounded-lg text-xs font-black border transition-all flex items-center space-x-1.5 shadow-2xs cursor-pointer active:scale-95 ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center space-x-1.5 shadow-2xs cursor-pointer active:scale-95 ${
                   conflicts.length > 0 || (collisionAnalysis && collisionAnalysis.totalCollisions > 0)
                     ? 'bg-red-600 hover:bg-red-700 text-white border-red-500 animate-pulse'
                     : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
                 }`}
-                title="Buka Analisis Cepat & Peringatan Dini Tabrakan Jadwal untuk Process Engineer (PE)"
+                title="Peringatan Dini Tabrakan Jadwal PE"
               >
                 <Zap className="w-3.5 h-3.5 text-amber-300" />
                 <span>
                   {conflicts.length > 0 || (collisionAnalysis && collisionAnalysis.totalCollisions > 0)
-                    ? `Peringatan Tabrakan PE (${collisionAnalysis?.totalCollisions || conflicts.length})`
-                    : 'Jadwal PE Aman'}
+                    ? `Bentrok (${collisionAnalysis?.totalCollisions || conflicts.length})`
+                    : 'Aman'}
                 </span>
               </button>
             )}
 
             {/* Layout Toggle */}
-            <div className="flex items-center bg-slate-200/70 p-0.5 rounded-lg">
+            <div className="flex items-center bg-slate-200/60 p-0.5 rounded-lg">
               <button
                 onClick={() => setViewLayout('calendar')}
                 className={`p-1.5 rounded-md text-xs font-bold transition-all ${
@@ -262,48 +341,48 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
             {canInputData && onAddNewSchedule && (
               <button
                 onClick={() => onAddNewSchedule()}
-                className="px-3 py-1 bg-[#1a3478] hover:bg-blue-900 text-white rounded-lg font-bold text-xs shadow-2xs transition-colors"
+                className="px-3 py-1.5 bg-[#1a3478] hover:bg-blue-900 text-white rounded-lg font-bold text-xs shadow-2xs transition-colors flex items-center space-x-1"
               >
-                + Input Style
+                <span>+ Input</span>
               </button>
             )}
           </div>
 
         </div>
 
-        {/* Legend Ringkas & Keterangan Hari */}
-        <div className="mt-3 pt-2.5 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex flex-wrap items-center gap-3 text-[11px]">
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-xs bg-blue-600"></span>
-              <span className="text-slate-600 font-medium">Senin - Jumat: 8 Jam (07.30 - 18.00)</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-xs bg-amber-400"></span>
-              <span className="text-amber-900 font-bold">Sabtu: 5 Jam</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-xs bg-slate-200"></span>
-              <span className="text-slate-500 font-medium">Minggu: Libur (Loncat ke Senin)</span>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-xs bg-red-600 flex items-center justify-center text-white text-[7px] font-black">
+        {/* Legend Ringkas & Keterangan Hari - Tanpa Bertele-tele */}
+        <div className="mt-2.5 pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2.5 text-[11px] text-slate-600">
+            <span className="flex items-center space-x-1">
+              <span className="w-2 h-2 rounded-xs bg-blue-600"></span>
+              <span>Sen-Jum (8j)</span>
+            </span>
+            <span className="flex items-center space-x-1">
+              <span className="w-2 h-2 rounded-xs bg-amber-400"></span>
+              <span>Sabtu (5j)</span>
+            </span>
+            <span className="flex items-center space-x-1">
+              <span className="w-2 h-2 rounded-xs bg-slate-300"></span>
+              <span>Minggu (Libur)</span>
+            </span>
+            <span className="flex items-center space-x-1">
+              <span className="w-2 h-2 rounded-xs bg-red-600 text-white flex items-center justify-center text-[7px] font-black">
                 ⚡
               </span>
-              <span className="text-red-700 font-bold">Tumpang Tindih (Overlap)</span>
-            </div>
+              <span>Bentrok</span>
+            </span>
           </div>
 
-          <div className="text-[11px] font-semibold">
+          <div className="text-[11px]">
             {conflicts.length > 0 ? (
               <span className="text-red-600 font-bold flex items-center space-x-1">
                 <AlertTriangle className="w-3 h-3" />
-                <span>{conflicts.length} hari tumpang tindih terdeteksi</span>
+                <span>{conflicts.length} hari bentrok</span>
               </span>
             ) : (
-              <span className="text-emerald-700 font-bold flex items-center space-x-1">
+              <span className="text-emerald-700 font-semibold flex items-center space-x-1">
                 <CheckCircle2 className="w-3 h-3" />
-                <span>Alokasi line teratur tanpa tumpang tindih</span>
+                <span>Alokasi line rapi</span>
               </span>
             )}
           </div>
@@ -312,13 +391,13 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
 
       {/* TAMPILAN MATRIKS KALENDER */}
       {viewLayout === 'calendar' ? (
-        <div className="overflow-x-auto">
+        <div ref={scrollContainerRef} className="overflow-x-auto">
           <div className="min-w-[1050px]">
             
             {/* Header Kolom Tanggal */}
             <div 
               className="grid bg-slate-100 border-b border-slate-300 text-center sticky top-0 z-10"
-              style={{ gridTemplateColumns: `130px repeat(${daysInMonth}, minmax(30px, 1fr))` }}
+              style={{ gridTemplateColumns: `130px repeat(${daysInMonth}, minmax(32px, 1fr))` }}
             >
               <div className="p-2 font-bold text-xs text-[#1a3478] bg-slate-200 border-r border-slate-300 flex items-center justify-center sticky left-0 z-20">
                 Line
@@ -328,27 +407,39 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
                 const dayName = getDayName(day);
                 const isSun = isSunday(day);
                 const isSat = isSaturday(day);
+                const today = isToday(day);
+
                 return (
                   <div
                     key={day}
-                    className={`py-1.5 px-0.5 border-r border-slate-200 text-[10px] font-bold ${
-                      isSun 
-                        ? 'bg-red-50 text-red-700' 
-                        : isSat 
-                          ? 'bg-amber-50 text-amber-800' 
-                          : 'text-slate-700'
+                    id={today ? `cal-col-today-${day}` : undefined}
+                    className={`py-1.5 px-0.5 border-r border-slate-200 text-[10px] font-bold transition-colors ${
+                      today
+                        ? 'bg-blue-600 text-white ring-2 ring-blue-500 z-10 shadow-xs'
+                        : isSun 
+                          ? 'bg-red-50/80 text-red-700' 
+                          : isSat 
+                            ? 'bg-amber-50/80 text-amber-800' 
+                            : 'text-slate-700'
                     }`}
                   >
-                    <div className="text-[8px] uppercase tracking-tight opacity-75">{dayName}</div>
+                    <div className={`text-[8px] uppercase tracking-tight ${today ? 'text-blue-100 font-extrabold' : 'opacity-70'}`}>
+                      {dayName}
+                    </div>
                     <div className="text-xs font-black">{day}</div>
-                    {isSun && (
-                      <span className="inline-block text-[7px] font-extrabold text-red-600 bg-red-100 px-0.5 rounded-xs">
+                    {today && (
+                      <span className="inline-block text-[7px] font-black bg-white text-blue-700 px-1 py-0.2 rounded-xs uppercase">
+                        HARI INI
+                      </span>
+                    )}
+                    {!today && isSun && (
+                      <span className="inline-block text-[7px] font-bold text-red-600 bg-red-100 px-0.5 rounded-xs">
                         LIBUR
                       </span>
                     )}
-                    {isSat && (
-                      <span className="inline-block text-[7px] font-extrabold text-amber-800 bg-amber-100 px-0.5 rounded-xs">
-                        5 JAM
+                    {!today && isSat && (
+                      <span className="inline-block text-[7px] font-bold text-amber-800 bg-amber-100 px-0.5 rounded-xs">
+                        5J
                       </span>
                     )}
                   </div>
@@ -371,7 +462,7 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
                   <div 
                     key={lineId}
                     className="grid hover:bg-slate-50/50 transition-colors"
-                    style={{ gridTemplateColumns: `130px repeat(${daysInMonth}, minmax(30px, 1fr))` }}
+                    style={{ gridTemplateColumns: `130px repeat(${daysInMonth}, minmax(32px, 1fr))` }}
                   >
                     {/* Line Header Kiri (Sticky) */}
                     <div className="p-2.5 bg-white border-r border-slate-300 flex items-center justify-between sticky left-0 z-10 shadow-2xs">
@@ -384,7 +475,7 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
                       {hasLineConflict && (
                         <span 
                           className="w-4 h-4 rounded-full bg-red-600 text-white flex items-center justify-center text-[9px] font-black"
-                          title="Terdapat tumpang tindih style pada line ini!"
+                          title="Terdapat tumpang tindih style pada line ini"
                         >
                           ⚡
                         </span>
@@ -396,6 +487,7 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
                       const dateStr = formatDate(day);
                       const isSun = isSunday(day);
                       const isSat = isSaturday(day);
+                      const today = isToday(day);
                       const { activeStyles, dayConflicts, isOverlap } = getLineDayContent(lineId, dateStr);
 
                       return (
@@ -412,25 +504,27 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
                               });
                             }
                           }}
-                          className={`min-h-[50px] p-0.5 border-r border-slate-200 relative flex flex-col justify-center gap-0.5 cursor-pointer transition-all ${
-                            isSun 
-                              ? 'bg-slate-100/80 text-slate-400' 
-                              : isSat 
-                                ? 'bg-amber-50/30' 
-                                : 'hover:bg-blue-50/50'
+                          className={`min-h-[48px] p-0.5 border-r border-slate-200 relative flex flex-col justify-center gap-0.5 cursor-pointer transition-all ${
+                            today
+                              ? 'bg-blue-50/40 ring-1 ring-blue-300'
+                              : isSun 
+                                ? 'bg-slate-100/70 text-slate-400' 
+                                : isSat 
+                                  ? 'bg-amber-50/30' 
+                                  : 'hover:bg-blue-50/40'
                           } ${isOverlap ? 'bg-red-50 ring-1 ring-inset ring-red-400' : ''}`}
                         >
                           {/* TAMPILAN HARI MINGGU / OVERLAP / NORMAL */}
                           {isSun ? (
                             <div 
                               className="w-full text-center py-1 select-none"
-                              title={activeStyles.length > 0 ? `${activeStyles[0].styleName} (${activeStyles[0].buyer}) - Minggu Libur: Target 0 pcs (Dilewatkan ke hari kerja)` : 'Hari Minggu Libur (0 Jam Kerja)'}
+                              title={activeStyles.length > 0 ? `${activeStyles[0].styleName} - Minggu Libur: Target 0 pcs` : 'Hari Minggu Libur (0 Jam Kerja)'}
                             >
-                              <span className="text-[7.5px] font-black text-slate-400 bg-slate-200/90 px-1 py-0.5 rounded-xs block">
+                              <span className="text-[7.5px] font-bold text-slate-400 bg-slate-200/80 px-1 py-0.5 rounded-xs block">
                                 LIBUR
                               </span>
                               {activeStyles.length > 0 && (
-                                <span className="text-[7px] text-slate-400 font-semibold truncate block mt-0.5" title="Jadwal aktif namun hari Minggu dilewatkan tanpa target (0 pcs)">
+                                <span className="text-[7px] text-slate-400 font-semibold truncate block mt-0.5">
                                   {activeStyles[0].styleName.split('/')[0]} (0p)
                                 </span>
                               )}
@@ -438,7 +532,7 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
                           ) : isOverlap ? (
                             <div className="w-full bg-red-600 text-white rounded-xs p-1 text-[8.5px] font-bold text-center leading-tight shadow-2xs">
                               <span className="text-[7.5px] tracking-tight block uppercase text-amber-300 font-black animate-pulse">
-                                ⚡ TABRAKAN
+                                ⚡ BENTROK
                               </span>
                               <span className="truncate block font-black">
                                 {activeStyles[0]?.styleName.split(' ')[0] || 'Style 1'}
@@ -463,7 +557,7 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
                                             ? 'bg-amber-600' 
                                             : 'bg-blue-600'
                                       }`}
-                                      title={`${st.styleName} (${st.buyer}) - ${isExtended ? `Perpanjangan karena sisa ${st.remainingQty} pcs belum selesai` : `Target: ${isSat ? Math.round((st.dailyTargetQty * 5) / 8) : st.dailyTargetQty} pcs`}`}
+                                      title={`${st.styleName} (${st.buyer}) - ${isExtended ? `Perpanjangan sisa ${st.remainingQty} pcs` : `Target: ${isSat ? Math.round((st.dailyTargetQty * 5) / 8) : st.dailyTargetQty} pcs`}`}
                                     >
                                       <div className="truncate flex items-center justify-between">
                                         <span>{st.styleName.split('/')[0]}</span>
@@ -483,7 +577,7 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
                                 <>
                                   {isSat && (
                                     <span className="text-[7px] font-bold text-amber-500/70 text-center select-none block">
-                                      5 JAM
+                                      5J
                                     </span>
                                   )}
                                 </>
@@ -571,45 +665,46 @@ export const DailyLineScheduleCalendar: React.FC<DailyLineScheduleCalendarProps>
         </div>
       )}
 
-      {/* ANALISIS DI TARUH DI BAWAH (Sesuai Permintaan User: "jika ada analisis di taruh di bawah. buat tampilan lebih simple dan elegan") */}
-      <div className="p-4 sm:p-6 bg-slate-50/80 border-t border-slate-200 space-y-3">
-        <div className="flex items-center space-x-2">
-          <Zap className="w-4 h-4 text-amber-600" />
-          <h4 className="text-xs sm:text-sm font-extrabold text-slate-900">
-            Analisis Potensi Tumpang Tindih & Pengurangan Target Produksi
-          </h4>
+      {/* ANALISIS BENTROK LINE - Ringkas & Bersih */}
+      <div className="p-3.5 sm:p-4 bg-slate-50/80 border-t border-slate-200">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2">
+            <Zap className="w-4 h-4 text-amber-600" />
+            <h4 className="text-xs sm:text-sm font-extrabold text-slate-900">
+              Analisis Alokasi Line
+            </h4>
+          </div>
+          {conflicts.length > 0 ? (
+            <span className="text-[11px] font-bold text-red-600">
+              {conflicts.length} hari bentrok terdeteksi
+            </span>
+          ) : (
+            <span className="text-[11px] font-semibold text-emerald-700">
+              Semua jadwal tersusun rapi
+            </span>
+          )}
         </div>
 
         {conflicts.length > 0 ? (
-          <div className="space-y-2">
-            <p className="text-xs text-slate-600">
-              Terdeteksi <strong>{conflicts.length} hari tumpang tindih</strong> pada kalender. Target yang masuk di rekap harian akan mengurangi sisa target secara langsung, sehingga potensi overlap akan otomatis terselesaikan saat style pertama rampung.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {conflicts.slice(0, 4).map((c) => (
-                <div key={c.id} className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs space-y-1">
-                  <div className="flex items-center justify-between font-bold text-red-800">
-                    <span>{c.lineName} • {c.date}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 bg-red-200 text-red-900 rounded-xs font-black uppercase">
-                      Bentrok
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-red-700">
-                    {c.recommendation}
-                  </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {conflicts.slice(0, 3).map((c) => (
+              <div key={c.id} className="p-2.5 bg-red-50/80 border border-red-200 rounded-lg text-xs space-y-1">
+                <div className="flex items-center justify-between font-bold text-red-800">
+                  <span>{c.lineName} · {c.date}</span>
+                  <span className="text-[9px] px-1 py-0.2 bg-red-200 text-red-900 rounded-xs font-black uppercase">
+                    Bentrok
+                  </span>
                 </div>
-              ))}
-            </div>
+                <p className="text-[11px] text-red-700 leading-snug">
+                  {c.recommendation}
+                </p>
+              </div>
+            ))}
           </div>
         ) : (
-          <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center space-x-3 text-xs text-emerald-900">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            <div>
-              <span className="font-bold block">Seluruh jadwal lini produksi berjalan teratur dan optimal.</span>
-              <span className="text-[11px] text-emerald-700">
-                Tidak ada potensi tumpang tindih antar style. Setiap input harian di Rekap Bulanan langsung mengurangi akumulasi sisa target.
-              </span>
-            </div>
+          <div className="p-2.5 bg-emerald-50/60 border border-emerald-200/80 rounded-lg flex items-center space-x-2 text-xs text-emerald-800">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Alokasi style berjalan lancar tanpa tumpang tindih antar lini.</span>
           </div>
         )}
       </div>
