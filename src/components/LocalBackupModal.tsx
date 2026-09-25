@@ -172,10 +172,10 @@ export const LocalBackupModal: React.FC<LocalBackupModalProps> = ({
 
           {/* Device storage info badge */}
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-start space-x-3">
-            <Smartphone className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+            <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
             <div className="text-xs text-slate-700 leading-relaxed">
-              <span className="font-bold text-slate-900 block mb-0.5">Penyimpanan Terisolasi di Perangkat Anda</span>
-              Semua input data harian, bank target model, jadwal alokasi sewing, dan temuan perbaikan disimpan langsung pada memori browser / aplikasi di Android Anda ({totalRecords} entri tersimpan saat ini).
+              <span className="font-bold text-slate-900 block mb-0.5">Perlindungan Brankas Ganda (Aman dari Sinkronisasi GitHub)</span>
+              Semua input data harian, bank target model, jadwal alokasi sewing, dan temuan perbaikan disimpan secara permanen di memori lokal ({totalRecords} entri tersimpan saat ini). <strong>Saat repositori GitHub disinkronkan, di-deploy, atau di-refresh, data lama Anda tidak akan hilang</strong> berkat sistem auto-vault bertingkat.
             </div>
           </div>
 

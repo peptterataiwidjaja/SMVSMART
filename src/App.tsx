@@ -38,8 +38,29 @@ import {
   getNextMonth, 
   formatMonthYearIndonesian, 
   formatRupiah, 
-  formatPercent 
+  formatPercent,
+  isCurrentMonth,
+  getLaptopCurrentMonthYear
 } from './utils/formatters';
+import { 
+  loadSafeMonthlyRecap, 
+  saveSafeMonthlyRecap, 
+  loadSafeBankData, 
+  saveSafeBankData, 
+  loadSafeSchedules, 
+  saveSafeSchedules, 
+  loadSafeRepairDefects, 
+  saveSafeRepairDefects, 
+  loadSafePEFindings, 
+  saveSafePEFindings, 
+  loadSafeUrgentNotifications, 
+  saveSafeUrgentNotifications, 
+  ensurePersistentDataPreserved,
+  snapshotToMasterVault,
+  saveEmergencyUndoSnapshot,
+  getEmergencyUndoSnapshot,
+  STORAGE_KEYS 
+} from './utils/persistentStorage';
 import { buildLinesFromMonthlyRecap } from './utils/monthDataHelper';
 import { 
   loadSavedSchedules, 
@@ -101,67 +122,43 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [isCollisionModalOpen, setIsCollisionModalOpen] = useState(false);
 
-  // Bank Data Manual Style Scheduling & Overtime (OT) State
+  // Bank Data Manual Style Scheduling & Overtime (OT) State (Terlindungi Permanen saat Git Sync)
   const [styleSchedules, setStyleSchedules] = useState<StyleScheduleRecord[]>(() => {
-    return loadSavedSchedules();
+    return loadSafeSchedules();
   });
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<StyleScheduleRecord | null>(null);
 
   // Urgent Push Notifications State
   const [urgentNotifications, setUrgentNotifications] = useState<UrgentPushNotification[]>(() => {
-    return loadSavedUrgentNotifications();
+    return loadSafeUrgentNotifications();
   });
   const [isPushModalOpen, setIsPushModalOpen] = useState(false);
 
   // Process Engineering Findings & SMV Diagnostics State
   const [peFindings, setPeFindings] = useState<ProcessEngineeringFinding[]>(() => {
-    return loadSavedPEFindings();
+    return loadSafePEFindings();
   });
   const [isPEModalOpen, setIsPEModalOpen] = useState(false);
   const [editingPEFinding, setEditingPEFinding] = useState<ProcessEngineeringFinding | null>(null);
 
-  // Repair & Defect Records State with LocalStorage Persistence
+  // Repair & Defect Records State with Git-Safe LocalStorage + Vault Persistence
   const [repairRecords, setRepairRecords] = useState<RepairDefectRecord[]>(() => {
-    const saved = localStorage.getItem('tw_repair_defect_records_v1');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed parsing saved repair records:', e);
-      }
-    }
-    return INITIAL_REPAIR_DEFECT_DATA;
+    return loadSafeRepairDefects();
   });
 
-  // Bank Data Master State (Model, Target, SMV Standar) with local storage persistence
+  // Bank Data Master State (Model, Target, SMV Standar) with persistent storage
   const [bankDataModels, setBankDataModels] = useState<BankDataModel[]>(() => {
-    const saved = localStorage.getItem('tw_bank_data_models');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed parsing saved bank data:', e);
-      }
-    }
-    return INITIAL_BANK_DATA;
+    return loadSafeBankData();
   });
 
   const [isBankDataModalOpen, setIsBankDataModalOpen] = useState(false);
   const [editingBankModel, setEditingBankModel] = useState<BankDataModel | null>(null);
   const [preselectedBankModel, setPreselectedBankModel] = useState<BankDataModel | null>(null);
 
-  // Daily Productivity Recap State with local storage persistence
+  // Daily Productivity Recap State with multi-key persistent storage
   const [monthlyRecap, setMonthlyRecap] = useState<MonthlyProductivityRecord[]>(() => {
-    const saved = localStorage.getItem('smv_monthly_recap_records_v2');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed parsing saved monthly recap:', e);
-      }
-    }
-    return INITIAL_MONTHLY_RECAP;
+    return loadSafeMonthlyRecap();
   });
 
   // Modal input state for Rekap Harian
@@ -169,21 +166,42 @@ export default function App() {
   const [editingRecord, setEditingRecord] = useState<MonthlyProductivityRecord | null>(null);
 
   // Selected Month Filter State (format: "YYYY-MM")
+  // TAMPILAN DISESUAIKAN OTOMATIS KE BULAN & TAHUN YANG SEDANG BERJALAN PADA LAPTOP
+  const currentLaptopMonth = getCurrentYearMonth();
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    const saved = localStorage.getItem('tw_selected_dashboard_month');
-    if (saved && /^\d{4}-\d{2}$/.test(saved)) {
-      return saved;
-    }
+    // Selalu mulai di bulan & tahun riil laptop saat ini agar user tidak perlu repot menggeser halaman
     return getCurrentYearMonth();
   });
 
+  // Verifikasi otomatis integritas data saat aplikasi dimuat / setelah sinkronisasi GitHub
   useEffect(() => {
-    localStorage.setItem('tw_selected_dashboard_month', selectedMonth);
-  }, [selectedMonth]);
+    ensurePersistentDataPreserved().then((restored) => {
+      if (restored) {
+        setMonthlyRecap(loadSafeMonthlyRecap());
+        setBankDataModels(loadSafeBankData());
+        setStyleSchedules(loadSafeSchedules());
+        setRepairRecords(loadSafeRepairDefects());
+        setPeFindings(loadSafePEFindings());
+        setUrgentNotifications(loadSafeUrgentNotifications());
+      }
+    });
+  }, []);
 
   // Filter monthly recap records for the selected month
   const filteredMonthlyRecap = React.useMemo(() => {
     return monthlyRecap.filter(r => r.date && r.date.startsWith(selectedMonth));
+  }, [monthlyRecap, selectedMonth]);
+
+  // Deteksi rekaman di periode lain jika bulan berjalan laptop masih kosong
+  const otherMonthsWithData = React.useMemo(() => {
+    const set = new Set<string>();
+    monthlyRecap.forEach(r => {
+      if (r.date && r.date.length >= 7) {
+        const ym = r.date.substring(0, 7);
+        if (ym !== selectedMonth) set.add(ym);
+      }
+    });
+    return Array.from(set).sort().reverse();
   }, [monthlyRecap, selectedMonth]);
 
   // Filter repair & defect records for the selected month
@@ -292,13 +310,13 @@ export default function App() {
       // Update recap records if parsed
       if (result.recapRecords && result.recapRecords.length > 0) {
         setMonthlyRecap(result.recapRecords);
-        localStorage.setItem('smv_monthly_recap_records_v2', JSON.stringify(result.recapRecords));
+        saveSafeMonthlyRecap(result.recapRecords);
       }
 
       // Update bank data models if parsed
       if (result.bankModels && result.bankModels.length > 0) {
         setBankDataModels(result.bankModels);
-        localStorage.setItem('tw_bank_data_models', JSON.stringify(result.bankModels));
+        saveSafeBankData(result.bankModels);
       }
 
       localStorage.setItem('smv_apps_script_url', url);
@@ -353,7 +371,7 @@ export default function App() {
     if (type === 'recap' && res.recapRecords && res.recapRecords.length > 0) {
       setMonthlyRecap(prev => {
         const combined = [...res.recapRecords!, ...prev.filter(p => !res.recapRecords!.some(r => r.date === p.date && r.lineId === p.lineId))];
-        localStorage.setItem('smv_monthly_recap_records_v2', JSON.stringify(combined));
+        saveSafeMonthlyRecap(combined);
         return combined;
       });
       showToast('success', `Berhasil mengimpor ${res.recapRecords.length} baris rekap harian!`);
@@ -361,7 +379,7 @@ export default function App() {
     } else if (type === 'bank' && res.bankModels && res.bankModels.length > 0) {
       setBankDataModels(prev => {
         const combined = [...res.bankModels!, ...prev.filter(p => !res.bankModels!.some(m => m.modelCode.toUpperCase() === p.modelCode.toUpperCase()))];
-        localStorage.setItem('tw_bank_data_models', JSON.stringify(combined));
+        saveSafeBankData(combined);
         return combined;
       });
       showToast('success', `Berhasil mengimpor ${res.bankModels.length} model ke Bank Data!`);
@@ -370,8 +388,23 @@ export default function App() {
     return { count: 0, message: 'Tidak ada baris valid yang ditemukan.' };
   };
 
-  // Kosongkan semua data (Reset all records & local storage)
+  // Kosongkan semua data dengan perlindungan salinan darurat (Safe Reset)
   const handleClearAllData = () => {
+    // Simpan salinan darurat terlebih dahulu agar tidak hilang permanen
+    saveEmergencyUndoSnapshot({
+      version: '2.0.0',
+      lastUpdated: new Date().toISOString(),
+      app: 'PT Teratai Widjaja Produksi & SMV',
+      recapRecords: monthlyRecap,
+      bankModels: bankDataModels,
+      styleSchedules,
+      repairRecords,
+      peFindings,
+      urgentNotifications,
+      incidents,
+      sheetUrl: dataSource.appsScriptUrl
+    });
+
     setLines([]);
     setMonthlyRecap([]);
     setBankDataModels([]);
@@ -379,13 +412,13 @@ export default function App() {
     setRepairRecords([]);
     setPeFindings([]);
     setUrgentNotifications([]);
-    localStorage.removeItem('smv_apps_script_url');
-    localStorage.removeItem('smv_monthly_recap_records_v2');
-    localStorage.removeItem('tw_bank_data_models');
-    localStorage.removeItem('tw_style_schedules_v1');
-    localStorage.removeItem('tw_repair_defect_records_v1');
-    localStorage.removeItem('tw_pe_findings_v1');
-    localStorage.removeItem('tw_urgent_notifications_v1');
+    localStorage.removeItem(STORAGE_KEYS.RECAP);
+    localStorage.removeItem(STORAGE_KEYS.BANK);
+    localStorage.removeItem(STORAGE_KEYS.SCHEDULES);
+    localStorage.removeItem(STORAGE_KEYS.REPAIR);
+    localStorage.removeItem(STORAGE_KEYS.FINDINGS);
+    localStorage.removeItem(STORAGE_KEYS.NOTIFICATIONS);
+    localStorage.removeItem(STORAGE_KEYS.MASTER_VAULT);
     setDataSource({
       isLive: false,
       appsScriptUrl: '',
@@ -393,7 +426,39 @@ export default function App() {
       autoSyncInterval: 0,
       status: 'idle'
     });
-    showToast('info', 'Semua data telah dikosongkan. Dashboard siap untuk pengisian data baru.');
+    showToast('info', 'Semua data telah dikosongkan. Salinan darurat tersimpan jika diperlukan.');
+  };
+
+  // Pulihkan salinan darurat jika pengguna tidak sengaja mengosongkan data
+  const handleUndoClearData = () => {
+    const undoData = getEmergencyUndoSnapshot();
+    if (undoData) {
+      if (undoData.recapRecords) {
+        setMonthlyRecap(undoData.recapRecords);
+        saveSafeMonthlyRecap(undoData.recapRecords);
+      }
+      if (undoData.bankModels) {
+        setBankDataModels(undoData.bankModels);
+        saveSafeBankData(undoData.bankModels);
+      }
+      if (undoData.styleSchedules) {
+        setStyleSchedules(undoData.styleSchedules);
+        saveSafeSchedules(undoData.styleSchedules);
+      }
+      if (undoData.repairRecords) {
+        setRepairRecords(undoData.repairRecords);
+        saveSafeRepairDefects(undoData.repairRecords);
+      }
+      if (undoData.peFindings) {
+        setPeFindings(undoData.peFindings);
+        saveSafePEFindings(undoData.peFindings);
+      }
+      if (undoData.urgentNotifications) {
+        setUrgentNotifications(undoData.urgentNotifications);
+        saveSafeUrgentNotifications(undoData.urgentNotifications);
+      }
+      showToast('success', 'Data berhasil dipulihkan dari salinan darurat!');
+    }
   };
 
   // Reset to default preloaded dataset (now empty by default)
@@ -415,31 +480,30 @@ export default function App() {
   }) => {
     if (restored.monthlyRecap) {
       setMonthlyRecap(restored.monthlyRecap);
-      localStorage.setItem('smv_monthly_recap_records_v2', JSON.stringify(restored.monthlyRecap));
+      saveSafeMonthlyRecap(restored.monthlyRecap);
     }
     if (restored.bankDataModels) {
       setBankDataModels(restored.bankDataModels);
-      localStorage.setItem('tw_bank_data_models', JSON.stringify(restored.bankDataModels));
+      saveSafeBankData(restored.bankDataModels);
     }
     if (restored.repairRecords) {
       setRepairRecords(restored.repairRecords);
-      localStorage.setItem('tw_repair_defect_records_v1', JSON.stringify(restored.repairRecords));
+      saveSafeRepairDefects(restored.repairRecords);
     }
     if (restored.styleSchedules) {
       setStyleSchedules(restored.styleSchedules);
-      localStorage.setItem('tw_style_schedules_v1', JSON.stringify(restored.styleSchedules));
+      saveSafeSchedules(restored.styleSchedules);
     }
     if (restored.peFindings) {
       setPeFindings(restored.peFindings);
-      localStorage.setItem('tw_pe_findings_v1', JSON.stringify(restored.peFindings));
+      saveSafePEFindings(restored.peFindings);
     }
     if (restored.urgentNotifications) {
       setUrgentNotifications(restored.urgentNotifications);
-      localStorage.setItem('tw_urgent_notifications_v1', JSON.stringify(restored.urgentNotifications));
+      saveSafeUrgentNotifications(restored.urgentNotifications);
     }
     if (restored.selectedMonth) {
       setSelectedMonth(restored.selectedMonth);
-      localStorage.setItem('tw_selected_dashboard_month', restored.selectedMonth);
     }
     showToast('success', 'Data lokal berhasil dipulihkan secara penuh tanpa cloud.');
   };
@@ -507,7 +571,7 @@ export default function App() {
       } else {
         updated = [record, ...prev];
       }
-      localStorage.setItem('smv_monthly_recap_records_v2', JSON.stringify(updated));
+      saveSafeMonthlyRecap(updated);
       return updated;
     });
 
@@ -531,7 +595,7 @@ export default function App() {
           }
           return s;
         });
-        saveSchedules(updated);
+        saveSafeSchedules(updated);
         showToast('success', `Data produksi ${record.lineName} (${record.style}) disimpan! Target order ${matching.styleName} berkurang sisa ${Math.max(0, matching.orderQty - (matching.actualQty + record.actualDailyPcs))} pcs.`);
         return updated;
       }
@@ -550,7 +614,7 @@ export default function App() {
       } else {
         updated = [planData, ...prev];
       }
-      saveSchedules(updated);
+      saveSafeSchedules(updated);
       return updated;
     });
     showToast('success', `Perencanaan bulanan model ${planData.styleName} berhasil dibuat. Input harian otomatis akan mengurangi target.`);
@@ -566,7 +630,7 @@ export default function App() {
       } else {
         updated = [record, ...prev];
       }
-      localStorage.setItem('tw_repair_defect_records_v1', JSON.stringify(updated));
+      saveSafeRepairDefects(updated);
       return updated;
     });
     showToast('success', `Data defect/repair ${record.lineName} (${record.style}) berhasil disimpan.`);
@@ -575,7 +639,7 @@ export default function App() {
   const handleDeleteRepairRecord = (id: string) => {
     setRepairRecords(prev => {
       const updated = prev.filter(r => r.id !== id);
-      localStorage.setItem('tw_repair_defect_records_v1', JSON.stringify(updated));
+      saveSafeRepairDefects(updated);
       return updated;
     });
     showToast('info', 'Data repair/defect berhasil dihapus.');
@@ -585,7 +649,7 @@ export default function App() {
   const handleDeleteRecapRecord = (id: string) => {
     setMonthlyRecap(prev => {
       const updated = prev.filter(r => r.id !== id);
-      localStorage.setItem('smv_monthly_recap_records_v2', JSON.stringify(updated));
+      saveSafeMonthlyRecap(updated);
       return updated;
     });
     showToast('info', 'Rekaman rekap harian berhasil dihapus.');
@@ -601,7 +665,7 @@ export default function App() {
       } else {
         updated = [model, ...prev];
       }
-      localStorage.setItem('tw_bank_data_models', JSON.stringify(updated));
+      saveSafeBankData(updated);
       return updated;
     });
     showToast('success', `Model ${model.modelCode} berhasil disimpan ke Bank Data!`);
@@ -611,7 +675,7 @@ export default function App() {
   const handleDeleteBankData = (id: string) => {
     setBankDataModels(prev => {
       const updated = prev.filter(m => m.id !== id);
-      localStorage.setItem('tw_bank_data_models', JSON.stringify(updated));
+      saveSafeBankData(updated);
       return updated;
     });
     showToast('info', 'Model di Bank Data berhasil dihapus.');
@@ -634,7 +698,7 @@ export default function App() {
       } else {
         updated = [record, ...prev];
       }
-      saveSchedules(updated);
+      saveSafeSchedules(updated);
 
       // Check if this newly saved schedule creates an overlap conflict on this line
       const lineConflicts = detectScheduleOverlaps(updated).filter(c => c.lineId === record.lineId);
@@ -653,7 +717,7 @@ export default function App() {
         };
         setUrgentNotifications(prevNotifs => {
           const updatedNotifs = [notif, ...prevNotifs];
-          saveUrgentNotifications(updatedNotifs);
+          saveSafeUrgentNotifications(updatedNotifs);
           return updatedNotifs;
         });
         sendBrowserPushNotification(notif.title, notif.message);
@@ -668,7 +732,7 @@ export default function App() {
   const handleDeleteSchedule = (id: string) => {
     setStyleSchedules(prev => {
       const updated = prev.filter(s => s.id !== id);
-      saveSchedules(updated);
+      saveSafeSchedules(updated);
       return updated;
     });
     showToast('info', 'Alokasi style berhasil dihapus dari jadwal.');
@@ -684,7 +748,7 @@ export default function App() {
       } else {
         updated = [finding, ...prev];
       }
-      savePEFindings(updated);
+      saveSafePEFindings(updated);
       return updated;
     });
     showToast('success', `Temuan PE & Diagnostik SMV (${finding.operationName} - ${finding.lineName}) berhasil disimpan.`);
@@ -693,7 +757,7 @@ export default function App() {
   const handleDeletePEFinding = (id: string) => {
     setPeFindings(prev => {
       const updated = prev.filter(f => f.id !== id);
-      savePEFindings(updated);
+      saveSafePEFindings(updated);
       return updated;
     });
     showToast('info', 'Temuan rekayasa proses berhasil dihapus.');
@@ -702,7 +766,7 @@ export default function App() {
   const handleUpdatePEStatus = (id: string, newStatus: 'implemented' | 'trial' | 'evaluation') => {
     setPeFindings(prev => {
       const updated = prev.map(f => f.id === id ? { ...f, status: newStatus } : f);
-      savePEFindings(updated);
+      saveSafePEFindings(updated);
       return updated;
     });
     showToast('success', 'Status implementasi Kaizen berhasil diperbarui.');
@@ -793,11 +857,28 @@ export default function App() {
                 <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 font-mono">
                   {selectedMonth}
                 </span>
+
+                {/* Badge otomatis bulan berjalan laptop */}
+                {selectedMonth === currentLaptopMonth ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center space-x-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Bulan Berjalan Laptop</span>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setSelectedMonth(currentLaptopMonth)}
+                    className="px-2.5 py-0.5 text-xs font-extrabold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-2xs flex items-center space-x-1 active:scale-95 transition cursor-pointer"
+                    title="Klik untuk langsung kembali ke bulan & tahun laptop saat ini tanpa perlu menggeser"
+                  >
+                    <Calendar className="w-3 h-3" />
+                    <span>Kembali ke Bulan Ini ({formatMonthYearIndonesian(currentLaptopMonth)})</span>
+                  </button>
+                )}
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 {filteredMonthlyRecap.length > 0 
                   ? `Menampilkan ${filteredMonthlyRecap.length} data rekaman produksi pada bulan ini.`
-                  : 'Data saat ini kosong untuk bulan ini. Dashboard siap untuk pengisian data baru.'}
+                  : `Tampilan otomatis pada bulan berjalan laptop. Data siap untuk pengisian hari ini.`}
               </p>
             </div>
           </div>
@@ -805,7 +886,7 @@ export default function App() {
           <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap">
             <button
               onClick={() => setSelectedMonth(getPreviousMonth(selectedMonth))}
-              className="px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center space-x-1 active:scale-95"
+              className="px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center space-x-1 active:scale-95 cursor-pointer"
               title="Bulan Sebelumnya"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
@@ -824,7 +905,7 @@ export default function App() {
 
             <button
               onClick={() => setSelectedMonth(getNextMonth(selectedMonth))}
-              className="px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center space-x-1 active:scale-95"
+              className="px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center space-x-1 active:scale-95 cursor-pointer"
               title="Bulan Berikutnya"
             >
               <span className="hidden sm:inline">Bulan Depan</span>
@@ -833,7 +914,7 @@ export default function App() {
 
             <button
               onClick={() => setIsBackupModalOpen(true)}
-              className="px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg transition-colors flex items-center space-x-1 active:scale-95 ml-auto sm:ml-2"
+              className="px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg transition-colors flex items-center space-x-1 active:scale-95 ml-auto sm:ml-2 cursor-pointer"
               title="Cadangkan & Pulihkan Data Lokal (Offline Tanpa Cloud)"
             >
               <HardDrive className="w-3.5 h-3.5 text-emerald-600" />
@@ -842,14 +923,58 @@ export default function App() {
 
             <button
               onClick={handleClearAllData}
-              className="px-2.5 py-1.5 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg transition-colors flex items-center space-x-1 active:scale-95"
+              className="px-2.5 py-1.5 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg transition-colors flex items-center space-x-1 active:scale-95 cursor-pointer"
               title="Kosongkan Semua Data"
             >
               <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-              <span>Kosongkan Data</span>
+              <span>Kosongkan</span>
             </button>
           </div>
         </div>
+
+        {/* Notifikasi Informasi Jika Bulan Berjalan Masih Kosong namun Tersedia Data Lama di Bulan Lain */}
+        {filteredMonthlyRecap.length === 0 && otherMonthsWithData.length > 0 && (
+          <div className="bg-blue-50/90 border border-blue-200 rounded-xl p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs animate-in fade-in duration-200 shadow-2xs">
+            <div className="flex items-start sm:items-center space-x-2.5">
+              <div className="p-1 rounded-lg bg-blue-100 text-blue-700 shrink-0">
+                <Info className="w-4 h-4" />
+              </div>
+              <div className="text-slate-700 leading-relaxed">
+                <span className="font-extrabold text-blue-900 block sm:inline">
+                  Tampilan disesuaikan ke bulan berjalan laptop ({formatMonthYearIndonesian(selectedMonth)}).
+                </span>{' '}
+                <span>
+                  Data lama Anda ({monthlyRecap.length} baris) tetap aman tersimpan saat sinkronisasi GitHub dan tidak hilang.
+                </span>{' '}
+                <span className="text-slate-500 font-semibold">
+                  (Tersedia di: {otherMonthsWithData.slice(0, 3).map(m => formatMonthYearIndonesian(m)).join(', ')})
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 shrink-0 self-end md:self-auto">
+              <button
+                type="button"
+                onClick={() => setSelectedMonth(otherMonthsWithData[0])}
+                className="px-3 py-1.5 bg-white hover:bg-slate-100 text-blue-800 border border-blue-200 font-bold rounded-lg shadow-2xs transition active:scale-95 cursor-pointer text-xs"
+              >
+                Buka Data {formatMonthYearIndonesian(otherMonthsWithData[0])}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingRecord(null);
+                  setPreselectedBankModel(null);
+                  setIsInputModalOpen(true);
+                }}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-2xs transition active:scale-95 cursor-pointer text-xs flex items-center space-x-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Input Hari Ini</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Dynamic Tab Views */}
         {activeTab === 'overview' && (

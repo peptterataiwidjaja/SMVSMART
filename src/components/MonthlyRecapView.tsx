@@ -36,7 +36,7 @@ import {
   Cell
 } from 'recharts';
 import { MonthlyProductivityRecord, StyleScheduleRecord } from '../types';
-import { formatPercent, formatMonthYearIndonesian, getPreviousMonth, getNextMonth } from '../utils/formatters';
+import { formatPercent, formatMonthYearIndonesian, getPreviousMonth, getNextMonth, getCurrentYearMonth } from '../utils/formatters';
 
 interface MonthlyRecapViewProps {
   records: MonthlyProductivityRecord[];
@@ -177,33 +177,47 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full md:w-auto">
           {/* Month Selector */}
           {selectedMonth && onMonthChange && (
-            <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-lg p-1">
-              <button
-                type="button"
-                onClick={() => onMonthChange(getPreviousMonth(selectedMonth))}
-                className="p-1 hover:bg-white rounded text-slate-600 hover:text-blue-700 transition-colors"
-                title="Bulan Sebelumnya"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-              </button>
-              <div className="flex items-center space-x-1 px-1">
-                <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <input
-                  type="month"
-                  value={selectedMonth}
-                  onChange={(e) => e.target.value && onMonthChange(e.target.value)}
-                  className="text-xs font-bold text-slate-800 bg-transparent border-0 p-0 focus:ring-0 cursor-pointer"
-                  title="Pilih Bulan Rekap"
-                />
+            <div className="flex items-center space-x-1.5">
+              <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-lg p-1">
+                <button
+                  type="button"
+                  onClick={() => onMonthChange(getPreviousMonth(selectedMonth))}
+                  className="p-1 hover:bg-white rounded text-slate-600 hover:text-blue-700 transition-colors"
+                  title="Bulan Sebelumnya"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <div className="flex items-center space-x-1 px-1">
+                  <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => e.target.value && onMonthChange(e.target.value)}
+                    className="text-xs font-bold text-slate-800 bg-transparent border-0 p-0 focus:ring-0 cursor-pointer"
+                    title="Pilih Bulan Rekap"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onMonthChange(getNextMonth(selectedMonth))}
+                  className="p-1 hover:bg-white rounded text-slate-600 hover:text-blue-700 transition-colors"
+                  title="Bulan Berikutnya"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => onMonthChange(getNextMonth(selectedMonth))}
-                className="p-1 hover:bg-white rounded text-slate-600 hover:text-blue-700 transition-colors"
-                title="Bulan Berikutnya"
-              >
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+
+              {selectedMonth !== getCurrentYearMonth() && (
+                <button
+                  type="button"
+                  onClick={() => onMonthChange(getCurrentYearMonth())}
+                  className="hidden sm:inline-flex items-center space-x-1 px-2 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-2xs transition active:scale-95 cursor-pointer"
+                  title="Kembali ke bulan yang sedang berjalan di laptop"
+                >
+                  <Calendar className="w-3 h-3" />
+                  <span>Bulan Ini</span>
+                </button>
+              )}
             </div>
           )}
 

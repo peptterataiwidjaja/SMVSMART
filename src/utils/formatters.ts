@@ -116,6 +116,22 @@ export function getCurrentYearMonth(): string {
   return `${y}-${m}`;
 }
 
+export function isCurrentMonth(yearMonth: string): boolean {
+  return yearMonth === getCurrentYearMonth();
+}
+
+export function getLaptopCurrentDateString(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function getLaptopCurrentMonthYear(): string {
+  return getCurrentYearMonth();
+}
+
 export function getPreviousMonth(yearMonth: string): string {
   if (!yearMonth || !yearMonth.includes('-')) return yearMonth;
   const [yStr, mStr] = yearMonth.split('-');

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { DataSourceState, LineIncident, AuthUser } from '../types';
 import { CompanyLogo } from './CompanyLogo';
-import { formatMonthYearIndonesian, getPreviousMonth, getNextMonth } from '../utils/formatters';
+import { formatMonthYearIndonesian, getPreviousMonth, getNextMonth, getCurrentYearMonth } from '../utils/formatters';
 
 export type NavTabType = 'overview' | 'style-schedule' | 'scenario-analysis' | 'monthly-recap' | 'repair-defect' | 'bank-data' | 'daily-smv' | 'revenue' | 'data-matrix';
 
@@ -91,45 +91,68 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Center Month Selector */}
           {selectedMonth && onMonthChange && (
-            <div className="flex items-center bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl px-1.5 sm:px-2.5 py-1 sm:py-1.5 transition-all shadow-2xs">
-              <button
-                id="btn-navbar-prev-month"
-                type="button"
-                onClick={() => onMonthChange(getPreviousMonth(selectedMonth))}
-                className="p-1 hover:bg-white rounded-lg text-slate-600 hover:text-blue-700 transition-all active:scale-90"
-                title="Bulan Sebelumnya"
-                aria-label="Bulan Sebelumnya"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
+            <div className="flex items-center space-x-1.5">
+              <div className="flex items-center bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl px-1.5 sm:px-2.5 py-1 sm:py-1.5 transition-all shadow-2xs">
+                <button
+                  id="btn-navbar-prev-month"
+                  type="button"
+                  onClick={() => onMonthChange(getPreviousMonth(selectedMonth))}
+                  className="p-1 hover:bg-white rounded-lg text-slate-600 hover:text-blue-700 transition-all active:scale-90"
+                  title="Bulan Sebelumnya"
+                  aria-label="Bulan Sebelumnya"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
 
-              <div className="flex items-center space-x-1 sm:space-x-2 px-1 sm:px-2">
-                <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 shrink-0" />
-                <div className="flex flex-col items-start">
-                  <span className="hidden sm:inline text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
-                    Bulan & Tahun
-                  </span>
-                  <input
-                    id="input-navbar-month"
-                    type="month"
-                    value={selectedMonth}
-                    onChange={(e) => e.target.value && onMonthChange(e.target.value)}
-                    className="text-xs sm:text-sm font-black text-slate-900 bg-transparent border-0 p-0 focus:ring-0 cursor-pointer"
-                    title="Pilih Bulan & Tahun Dashboard"
-                  />
+                <div className="flex items-center space-x-1 sm:space-x-2 px-1 sm:px-2">
+                  <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 shrink-0" />
+                  <div className="flex flex-col items-start">
+                    <span className="hidden sm:inline text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
+                      Bulan &amp; Tahun
+                    </span>
+                    <input
+                      id="input-navbar-month"
+                      type="month"
+                      value={selectedMonth}
+                      onChange={(e) => e.target.value && onMonthChange(e.target.value)}
+                      className="text-xs sm:text-sm font-black text-slate-900 bg-transparent border-0 p-0 focus:ring-0 cursor-pointer"
+                      title="Pilih Bulan & Tahun Dashboard"
+                    />
+                  </div>
                 </div>
+
+                <button
+                  id="btn-navbar-next-month"
+                  type="button"
+                  onClick={() => onMonthChange(getNextMonth(selectedMonth))}
+                  className="p-1 hover:bg-white rounded-lg text-slate-600 hover:text-blue-700 transition-all active:scale-90"
+                  title="Bulan Berikutnya"
+                  aria-label="Bulan Berikutnya"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
 
-              <button
-                id="btn-navbar-next-month"
-                type="button"
-                onClick={() => onMonthChange(getNextMonth(selectedMonth))}
-                className="p-1 hover:bg-white rounded-lg text-slate-600 hover:text-blue-700 transition-all active:scale-90"
-                title="Bulan Berikutnya"
-                aria-label="Bulan Berikutnya"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+              {/* Status / Tombol Sinkronisasi Bulan Berjalan Laptop */}
+              {selectedMonth === getCurrentYearMonth() ? (
+                <div 
+                  className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-extrabold shadow-2xs"
+                  title="Tampilan otomatis sinkron dengan kalender laptop saat ini"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Bulan Berjalan Laptop</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onMonthChange(getCurrentYearMonth())}
+                  className="hidden sm:inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-extrabold shadow-2xs transition active:scale-95 cursor-pointer"
+                  title="Klik untuk langsung kembali ke bulan & tahun laptop saat ini tanpa perlu menggeser"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Ke Bulan Ini</span>
+                </button>
+              )}
             </div>
           )}
 
