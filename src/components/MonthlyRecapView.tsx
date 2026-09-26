@@ -851,11 +851,16 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
                     </td>
                     <td className="px-3 py-3 text-slate-700 text-xs">
                       <div className="space-y-1">
-                        <div className="flex items-center space-x-1.5">
+                        <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
                           <span className={`inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-bold border ${statusStyles.badge}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${statusStyles.dot}`}></span>
                             <span>{statusStyles.label}</span>
                           </span>
+                          {r.createdBy && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 text-[9.5px] font-bold">
+                              Input: {r.createdBy}
+                            </span>
+                          )}
                         </div>
                         <p className="text-[11px] text-slate-600 leading-snug">
                           {r.analysisNote || r.note || 'Produksi berjalan sesuai instruksi kerja standar.'}

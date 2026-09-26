@@ -5,8 +5,11 @@ import {
   RepairDefectRecord,
   ProcessEngineeringFinding,
   UrgentPushNotification,
-  LineIncident
+  LineIncident,
+  AuthUser,
+  NavBarConfigItem
 } from '../types';
+import { loadUserAccounts, saveUserAccounts, loadNavBarConfig, saveNavBarConfig } from '../services/authService';
 import { INITIAL_MONTHLY_RECAP } from '../data/monthlyRecapData';
 import { INITIAL_BANK_DATA } from '../data/bankData';
 import { INITIAL_REPAIR_DEFECT_DATA } from '../data/repairDefectData';
@@ -50,6 +53,8 @@ export interface MasterVaultPayload {
   peFindings: ProcessEngineeringFinding[];
   urgentNotifications: UrgentPushNotification[];
   incidents: LineIncident[];
+  userAccounts?: AuthUser[];
+  navBarConfig?: NavBarConfigItem[];
   sheetUrl?: string;
 }
 
@@ -129,10 +134,12 @@ export function snapshotToMasterVault(override?: Partial<MasterVaultPayload>): M
     const pe = override?.peFindings || loadSafePEFindings();
     const notif = override?.urgentNotifications || loadSafeUrgentNotifications();
     const inc = override?.incidents || loadSafeIncidents();
+    const accounts = override?.userAccounts || loadUserAccounts();
+    const navConfig = override?.navBarConfig || loadNavBarConfig();
     const sheet = override?.sheetUrl ?? (localStorage.getItem(STORAGE_KEYS.SHEET_URL) || '');
 
     const payload: MasterVaultPayload = {
-      version: '2.0.0',
+      version: '2.1.0',
       lastUpdated: new Date().toISOString(),
       app: 'PT Teratai Widjaja Produksi & SMV',
       recapRecords: recap,
@@ -142,6 +149,8 @@ export function snapshotToMasterVault(override?: Partial<MasterVaultPayload>): M
       peFindings: pe,
       urgentNotifications: notif,
       incidents: inc,
+      userAccounts: accounts,
+      navBarConfig: navConfig,
       sheetUrl: sheet
     };
 
@@ -428,6 +437,8 @@ export async function ensurePersistentDataPreserved(): Promise<boolean> {
         if (idbData.peFindings?.length) saveSafePEFindings(idbData.peFindings);
         if (idbData.urgentNotifications?.length) saveSafeUrgentNotifications(idbData.urgentNotifications);
         if (idbData.incidents?.length) saveSafeIncidents(idbData.incidents);
+        if (idbData.userAccounts?.length) saveUserAccounts(idbData.userAccounts);
+        if (idbData.navBarConfig?.length) saveNavBarConfig(idbData.navBarConfig);
         if (idbData.sheetUrl) localStorage.setItem(STORAGE_KEYS.SHEET_URL, idbData.sheetUrl);
         return true;
       }

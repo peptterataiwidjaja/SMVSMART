@@ -1,18 +1,19 @@
 import React from 'react';
-import { 
-  FileSpreadsheet, 
+import {
+  FileSpreadsheet,
   FileText,
-  Download, 
-  RefreshCw, 
-  Activity, 
-  Layers, 
+  Download,
+  RefreshCw,
+  Activity,
+  Layers,
   SlidersHorizontal,
-  CheckCircle2, 
+  CheckCircle2,
   AlertCircle,
   ClipboardList,
   Database,
   Plus,
   ShieldAlert,
+  ShieldCheck,
   Bell,
   BellRing,
   Calendar,
@@ -20,11 +21,12 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { DataSourceState, LineIncident, AuthUser } from '../types';
+import { DataSourceState, LineIncident, AuthUser, NavTabId, NavBarConfigItem } from '../types';
+import { DEFAULT_NAV_BARS } from '../services/authService';
 import { CompanyLogo } from './CompanyLogo';
 import { formatMonthYearIndonesian, getPreviousMonth, getNextMonth, getCurrentYearMonth } from '../utils/formatters';
 
-export type NavTabType = 'overview' | 'style-schedule' | 'scenario-analysis' | 'monthly-recap' | 'repair-defect' | 'bank-data' | 'daily-smv' | 'revenue' | 'data-matrix';
+export type NavTabType = NavTabId;
 
 interface NavbarProps {
   dataSource: DataSourceState;
@@ -48,6 +50,7 @@ interface NavbarProps {
   onOpenBackupModal?: () => void;
   currentUser?: AuthUser;
   onOpenLoginModal?: () => void;
+  navBarConfig?: NavBarConfigItem[];
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -71,10 +74,28 @@ export const Navbar: React.FC<NavbarProps> = ({
   onMonthChange,
   onOpenBackupModal,
   currentUser,
-  onOpenLoginModal
+  onOpenLoginModal,
+  navBarConfig = DEFAULT_NAV_BARS
 }) => {
   const criticalCount = incidents.filter(i => i.severity === 'critical').length;
   const pendingApprovalCount = incidents.filter(i => !i.peVerified || !i.fmApproved).length;
+  const isPE = currentUser?.role === 'PE' || Boolean(currentUser?.canManageAccounts);
+
+  const isTabVisible = (tabId: NavTabId): boolean => {
+    const cfg = navBarConfig.find(b => b.id === tabId);
+    if (cfg && !cfg.enabled && tabId !== 'account-access') return false;
+    if (tabId === 'account-access') return isPE;
+    if (currentUser?.allowedTabs && currentUser.allowedTabs.length > 0) {
+      return currentUser.allowedTabs.includes(tabId);
+    }
+    return true;
+  };
+
+  const getLabel = (tabId: NavTabId, isShort = false): string => {
+    const cfg = navBarConfig.find(b => b.id === tabId) || DEFAULT_NAV_BARS.find(b => b.id === tabId);
+    if (!cfg) return tabId;
+    return isShort ? cfg.shortLabel : cfg.label;
+  };
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-2xs">
@@ -238,144 +259,179 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Navigation Tabs with Edge-to-Edge Touch Scrolling on Mobile */}
         <div className="flex items-center space-x-1 sm:space-x-2 border-t border-slate-100 py-1.5 sm:py-2 -mx-3 px-3 sm:mx-0 sm:px-0 overflow-x-auto no-scrollbar touch-pan-x">
-          <button
-            id="tab-overview"
-            onClick={() => onTabChange('overview')}
-            className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all active:scale-95 ${
-              activeTab === 'overview'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <span className="sm:hidden">Ikhtisar</span>
-            <span className="hidden sm:inline">Ikhtisar & KPI</span>
-          </button>
+          {isTabVisible('overview') && (
+            <button
+              id="tab-overview"
+              onClick={() => onTabChange('overview')}
+              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all active:scale-95 ${
+                activeTab === 'overview'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <span className="sm:hidden">{getLabel('overview', true)}</span>
+              <span className="hidden sm:inline">{getLabel('overview', false)}</span>
+            </button>
+          )}
 
           {/* TAB: JADWAL STYLE SEWING */}
-          <button
-            id="tab-style-schedule"
-            onClick={() => onTabChange('style-schedule')}
-            className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center space-x-1 sm:space-x-1.5 active:scale-95 ${
-              activeTab === 'style-schedule'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span className="sm:hidden">Jadwal Style</span>
-            <span className="hidden sm:inline">Jadwal Style Sewing</span>
-            {overlapCount > 0 ? (
-              <span className="inline-flex items-center px-1.5 py-0.2 rounded-full bg-red-600 text-white text-[9px] font-black animate-pulse">
-                ⚡ {overlapCount}
-              </span>
-            ) : (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            )}
-          </button>
+          {isTabVisible('style-schedule') && (
+            <button
+              id="tab-style-schedule"
+              onClick={() => onTabChange('style-schedule')}
+              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center space-x-1 sm:space-x-1.5 active:scale-95 ${
+                activeTab === 'style-schedule'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span className="sm:hidden">{getLabel('style-schedule', true)}</span>
+              <span className="hidden sm:inline">{getLabel('style-schedule', false)}</span>
+              {overlapCount > 0 ? (
+                <span className="inline-flex items-center px-1.5 py-0.2 rounded-full bg-red-600 text-white text-[9px] font-black animate-pulse">
+                  ⚡ {overlapCount}
+                </span>
+              ) : (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              )}
+            </button>
+          )}
 
-          {/* TAB BARU: ANALISIS SKENARIO 5 HARI KERJA & OT */}
-          <button
-            id="tab-scenario-analysis"
-            onClick={() => onTabChange('scenario-analysis')}
-            className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center space-x-1 sm:space-x-1.5 active:scale-95 ${
-              activeTab === 'scenario-analysis'
-                ? 'bg-blue-700 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span className="sm:hidden">Skenario 5 Hari</span>
-            <span className="hidden sm:inline">Skenario 5 vs 6 Hari & OT</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-          </button>
+          {/* TAB: ANALISIS SKENARIO 5 HARI KERJA & OT */}
+          {isTabVisible('scenario-analysis') && (
+            <button
+              id="tab-scenario-analysis"
+              onClick={() => onTabChange('scenario-analysis')}
+              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center space-x-1 sm:space-x-1.5 active:scale-95 ${
+                activeTab === 'scenario-analysis'
+                  ? 'bg-blue-700 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span className="sm:hidden">{getLabel('scenario-analysis', true)}</span>
+              <span className="hidden sm:inline">{getLabel('scenario-analysis', false)}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+            </button>
+          )}
 
-          <button
-            id="tab-monthly-recap"
-            onClick={() => onTabChange('monthly-recap')}
-            className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center space-x-1 sm:space-x-1.5 active:scale-95 ${
-              activeTab === 'monthly-recap'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <span className="sm:hidden">Rekap Harian</span>
-            <span className="hidden sm:inline">Rekap Harian & Analisis</span>
-            <span className={`w-1.5 h-1.5 rounded-full ${activeTab === 'monthly-recap' ? 'bg-red-400' : 'bg-red-500'}`}></span>
-          </button>
+          {isTabVisible('monthly-recap') && (
+            <button
+              id="tab-monthly-recap"
+              onClick={() => onTabChange('monthly-recap')}
+              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center space-x-1 sm:space-x-1.5 active:scale-95 ${
+                activeTab === 'monthly-recap'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <span className="sm:hidden">{getLabel('monthly-recap', true)}</span>
+              <span className="hidden sm:inline">{getLabel('monthly-recap', false)}</span>
+              <span className={`w-1.5 h-1.5 rounded-full ${activeTab === 'monthly-recap' ? 'bg-red-400' : 'bg-red-500'}`}></span>
+            </button>
+          )}
 
-          {/* TAB BARU: REPAIR & DEFECT PER LINE (FISHBONE ANALISIS) */}
-          <button
-            id="tab-repair-defect"
-            onClick={() => onTabChange('repair-defect')}
-            className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center space-x-1 sm:space-x-1.5 active:scale-95 ${
-              activeTab === 'repair-defect'
-                ? 'bg-red-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <span className="sm:hidden">Repair & Defect</span>
-            <span className="hidden sm:inline">Repair & Defect (Fishbone)</span>
-            {repairCriticalCount > 0 ? (
-              <span className="inline-flex items-center px-1.5 py-0.2 rounded-full bg-red-800 text-white text-[9px] font-black animate-pulse">
-                ≥10% ({repairCriticalCount})
-              </span>
-            ) : (
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-            )}
-          </button>
+          {/* TAB: REPAIR & DEFECT PER LINE (FISHBONE ANALISIS) */}
+          {isTabVisible('repair-defect') && (
+            <button
+              id="tab-repair-defect"
+              onClick={() => onTabChange('repair-defect')}
+              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center space-x-1 sm:space-x-1.5 active:scale-95 ${
+                activeTab === 'repair-defect'
+                  ? 'bg-red-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <span className="sm:hidden">{getLabel('repair-defect', true)}</span>
+              <span className="hidden sm:inline">{getLabel('repair-defect', false)}</span>
+              {repairCriticalCount > 0 ? (
+                <span className="inline-flex items-center px-1.5 py-0.2 rounded-full bg-red-800 text-white text-[9px] font-black animate-pulse">
+                  ≥10% ({repairCriticalCount})
+                </span>
+              ) : (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              )}
+            </button>
+          )}
 
-          <button
-            id="tab-bank-data"
-            onClick={() => onTabChange('bank-data')}
-            className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center space-x-1 sm:space-x-1.5 active:scale-95 ${
-              activeTab === 'bank-data'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Database className="w-3.5 h-3.5" />
-            <span className="sm:hidden">Bank Data</span>
-            <span className="hidden sm:inline">Bank Data Model & Target</span>
-          </button>
+          {isTabVisible('bank-data') && (
+            <button
+              id="tab-bank-data"
+              onClick={() => onTabChange('bank-data')}
+              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center space-x-1 sm:space-x-1.5 active:scale-95 ${
+                activeTab === 'bank-data'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span className="sm:hidden">{getLabel('bank-data', true)}</span>
+              <span className="hidden sm:inline">{getLabel('bank-data', false)}</span>
+            </button>
+          )}
 
-          <button
-            id="tab-daily-smv"
-            onClick={() => onTabChange('daily-smv')}
-            className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all active:scale-95 ${
-              activeTab === 'daily-smv'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <span className="sm:hidden">Tren SMV</span>
-            <span className="hidden sm:inline">Analisis Tren SMV</span>
-          </button>
+          {isTabVisible('daily-smv') && (
+            <button
+              id="tab-daily-smv"
+              onClick={() => onTabChange('daily-smv')}
+              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all active:scale-95 ${
+                activeTab === 'daily-smv'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <span className="sm:hidden">{getLabel('daily-smv', true)}</span>
+              <span className="hidden sm:inline">{getLabel('daily-smv', false)}</span>
+            </button>
+          )}
 
-          <button
-            id="tab-revenue"
-            onClick={() => onTabChange('revenue')}
-            className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all active:scale-95 ${
-              activeTab === 'revenue'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <span className="sm:hidden">Revenue</span>
-            <span className="hidden sm:inline">Kinerja Revenue</span>
-          </button>
+          {isTabVisible('revenue') && (
+            <button
+              id="tab-revenue"
+              onClick={() => onTabChange('revenue')}
+              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all active:scale-95 ${
+                activeTab === 'revenue'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <span className="sm:hidden">{getLabel('revenue', true)}</span>
+              <span className="hidden sm:inline">{getLabel('revenue', false)}</span>
+            </button>
+          )}
 
-          <button
-            id="tab-matrix"
-            onClick={() => onTabChange('data-matrix')}
-            className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all active:scale-95 ${
-              activeTab === 'data-matrix'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <span className="sm:hidden">Matriks SMV</span>
-            <span className="hidden sm:inline">Matriks Lengkap SMV</span>
-          </button>
+          {isTabVisible('data-matrix') && (
+            <button
+              id="tab-matrix"
+              onClick={() => onTabChange('data-matrix')}
+              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all active:scale-95 ${
+                activeTab === 'data-matrix'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <span className="sm:hidden">{getLabel('data-matrix', true)}</span>
+              <span className="hidden sm:inline">{getLabel('data-matrix', false)}</span>
+            </button>
+          )}
+
+          {/* TAB KHUSUS PE: AKSES AKUN */}
+          {isTabVisible('account-access') && (
+            <button
+              id="tab-account-access"
+              onClick={() => onTabChange('account-access')}
+              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center space-x-1 sm:space-x-1.5 active:scale-95 ${
+                activeTab === 'account-access'
+                  ? 'bg-[#288390] text-white shadow-xs'
+                  : 'text-[#1a3478] bg-blue-50/70 hover:bg-blue-100 border border-blue-200/80'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span className="sm:hidden">{getLabel('account-access', true)}</span>
+              <span className="hidden sm:inline">{getLabel('account-access', false)}</span>
+            </button>
+          )}
         </div>
       </div>
     </header>

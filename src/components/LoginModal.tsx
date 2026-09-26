@@ -1,311 +1,154 @@
 import React, { useState } from 'react';
-import { 
-  ShieldCheck, 
-  Eye, 
-  Lock, 
-  User, 
-  KeyRound, 
-  CheckCircle2, 
-  AlertCircle, 
-  X, 
-  FileText, 
-  PlusCircle, 
-  ShieldAlert,
-  ArrowRight,
-  Sparkles
-} from 'lucide-react';
-import { AuthUser, UserRole } from '../types';
-import { loginWithCredentials, DEFAULT_PE_USER, DEFAULT_MONITOR_USER } from '../services/authService';
+import { AlertCircle, X, Eye, EyeOff } from 'lucide-react';
+import { AuthUser } from '../types';
+import { loginWithCredentials } from '../services/authService';
+import { CompanyLogo } from './CompanyLogo';
 
 interface LoginModalProps {
   isOpen: boolean;
-  onClose: () => void;
-  currentUser: AuthUser;
+  onClose?: () => void;
+  currentUser?: AuthUser;
   onLoginSuccess?: (user: AuthUser) => void;
   onSelectUser?: (user: AuthUser) => void;
+  isFullScreen?: boolean;
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
   onClose,
-  currentUser,
   onLoginSuccess,
-  onSelectUser
+  onSelectUser,
+  isFullScreen = false
 }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'quick' | 'manual'>('quick');
 
   if (!isOpen) return null;
 
-  const notifySuccess = (user: AuthUser) => {
-    if (typeof onLoginSuccess === 'function') {
-      onLoginSuccess(user);
-    }
-    if (typeof onSelectUser === 'function') {
-      onSelectUser(user);
-    }
-    onClose();
-  };
-
-  const handleManualSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
     const user = loginWithCredentials(username, password);
     if (user) {
-      notifySuccess(user);
+      setUsername('');
+      setPassword('');
+      if (typeof onLoginSuccess === 'function') {
+        onLoginSuccess(user);
+      }
+      if (typeof onSelectUser === 'function') {
+        onSelectUser(user);
+      }
+      if (onClose) {
+        onClose();
+      }
     } else {
-      setErrorMsg('Username atau Password/PIN salah. Gunakan kredensial resmi PT Teratai Widjaja.');
+      setErrorMsg('User atau Password tidak sesuai.');
     }
   };
 
-  const handleQuickLogin = (role: UserRole) => {
-    const user = role === 'PE' ? DEFAULT_PE_USER : DEFAULT_MONITOR_USER;
-    notifySuccess(user);
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden text-slate-900">
-        
-        {/* Header */}
-        <div className="px-6 py-4 bg-[#1a3478] text-white flex items-center justify-between">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-blue-200">
-              <Lock className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-bold text-base leading-tight">Keamanan &amp; Hak Akses Akun</h3>
-              <p className="text-xs text-blue-200">PT Teratai Widjaja — Garment Production System</p>
-            </div>
-          </div>
+    <div
+      className={
+        isFullScreen
+          ? 'min-h-screen w-full flex items-center justify-center bg-slate-50 p-4 font-[\'Plus_Jakarta_Sans\',sans-serif]'
+          : 'fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150 font-[\'Plus_Jakarta_Sans\',sans-serif]'
+      }
+    >
+      <div className="relative w-full max-w-[360px] rounded-md bg-white shadow-md border border-slate-200/90 px-7 py-8 text-slate-900">
+        {/* Tombol Tutup jika dibuka sebagai modal dari dalam aplikasi */}
+        {!isFullScreen && onClose && (
           <button
+            type="button"
             onClick={onClose}
-            className="text-white/70 hover:text-white p-1 rounded-lg transition"
+            className="absolute top-3.5 right-3.5 text-slate-400 hover:text-slate-600 p-1 rounded-md transition-colors cursor-pointer"
             aria-label="Tutup"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
+        )}
+
+        {/* Logo Teratai Widjaja sesuai gambar referensi */}
+        <div className="flex flex-col items-center justify-center pt-1 pb-5 border-b border-slate-100">
+          <CompanyLogo variant="stacked" size="lg" showSubtitle={false} />
         </div>
 
-        {/* Current Active User Status Bar */}
-        <div className="bg-slate-50 border-b border-slate-200 px-6 py-2.5 flex items-center justify-between text-xs">
-          <span className="text-slate-500 font-medium">Sesi Aktif Saat Ini:</span>
-          <div className="flex items-center space-x-2">
-            <span className={`px-2 py-0.5 rounded-full font-bold text-[11px] ${
-              currentUser.role === 'PE' 
-                ? 'bg-blue-100 text-blue-800 border border-blue-200' 
-                : 'bg-amber-100 text-amber-800 border border-amber-200'
-            }`}>
-              {currentUser.role === 'PE' ? '🛡️ Akun PE (Full Access)' : '👁️ Akun Monitor (Hanya Pantau)'}
-            </span>
-            <span className="font-bold text-slate-800">{currentUser.name}</span>
-          </div>
-        </div>
-
-        {/* Content Body */}
-        <div className="p-6 space-y-5">
-
-          {/* Mode Switch Tabs */}
-          <div className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl">
-            <button
-              type="button"
-              onClick={() => { setActiveTab('quick'); setErrorMsg(null); }}
-              className={`py-2 text-xs font-bold rounded-lg transition-all ${
-                activeTab === 'quick' ? 'bg-white text-[#1a3478] shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Pilih Akses Cepat (1-Sentuhan)
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('manual'); setErrorMsg(null); }}
-              className={`py-2 text-xs font-bold rounded-lg transition-all ${
-                activeTab === 'manual' ? 'bg-white text-[#1a3478] shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Masuk dengan Password / PIN
-            </button>
-          </div>
-
+        {/* Form Login: Hanya Bar User & Password */}
+        <form onSubmit={handleSubmit} className="pt-6 space-y-4">
           {errorMsg && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center space-x-2 text-xs text-rose-700 font-semibold">
+            <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-md flex items-center space-x-2 text-xs text-rose-700 font-semibold">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{errorMsg}</span>
             </div>
           )}
 
-          {activeTab === 'quick' ? (
-            <div className="space-y-3.5">
-              <p className="text-xs text-slate-500">
-                Pilih profil akun yang sesuai dengan tugas Anda. Pada sistem offline ini, Anda dapat beralih peran secara instan:
-              </p>
+          <div>
+            <label
+              htmlFor="login-user-input"
+              className="block text-sm font-bold text-slate-900 mb-1.5"
+            >
+              User
+            </label>
+            <input
+              id="login-user-input"
+              type="text"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                if (errorMsg) setErrorMsg(null);
+              }}
+              placeholder="User"
+              autoComplete="username"
+              required
+              className="w-full px-3.5 py-2 text-sm text-slate-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#288390] focus:ring-2 focus:ring-[#288390]/20 placeholder:text-slate-400 transition-all"
+            />
+          </div>
 
-              {/* Akun PE Card */}
-              <div 
-                onClick={() => handleQuickLogin('PE')}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  currentUser.role === 'PE'
-                    ? 'border-blue-600 bg-blue-50/50 shadow-xs'
-                    : 'border-slate-200 hover:border-blue-400 bg-white hover:bg-blue-50/20'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                      <ShieldCheck className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <h4 className="text-sm font-extrabold text-[#1a3478]">Akun PE (Process Engineering)</h4>
-                        <span className="px-1.5 py-0.2 rounded-xs bg-blue-600 text-white text-[9px] font-black uppercase">
-                          Wewenang Penuh
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 font-medium mt-0.5">
-                        pe@terataiwidjaja.com (Password/PIN: 1234 atau pe123)
-                      </p>
-                      
-                      <div className="mt-2.5 flex flex-wrap gap-1.5 text-[10px]">
-                        <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold flex items-center space-x-1">
-                          <PlusCircle className="w-3 h-3" />
-                          <span>Input &amp; Edit Data</span>
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-bold flex items-center space-x-1">
-                          <FileText className="w-3 h-3" />
-                          <span>Cetak / Print PDF</span>
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 font-bold flex items-center space-x-1">
-                          <ShieldCheck className="w-3 h-3" />
-                          <span>Akses Semua Fitur</span>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="shrink-0 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition"
-                  >
-                    Pilih PE
-                  </button>
-                </div>
-              </div>
-
-              {/* Akun Monitor Card */}
-              <div 
-                onClick={() => handleQuickLogin('MONITOR')}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  currentUser.role === 'MONITOR'
-                    ? 'border-amber-600 bg-amber-50/50 shadow-xs'
-                    : 'border-slate-200 hover:border-amber-400 bg-white hover:bg-amber-50/20'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                      <Eye className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <h4 className="text-sm font-extrabold text-amber-900">Akun Monitor (Monitoring Sahaja)</h4>
-                        <span className="px-1.5 py-0.2 rounded-xs bg-amber-500 text-white text-[9px] font-black uppercase">
-                          Pantau Sahaja
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 font-medium mt-0.5">
-                        monitor@terataiwidjaja.com (Password/PIN: 0000 atau monitor123)
-                      </p>
-
-                      <div className="mt-2.5 flex flex-wrap gap-1.5 text-[10px]">
-                        <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-300 font-medium flex items-center space-x-1">
-                          <Eye className="w-3 h-3" />
-                          <span>Lihat Grafik &amp; Kalender</span>
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-bold flex items-center space-x-1">
-                          <X className="w-3 h-3" />
-                          <span>Tanpa Akses Print PDF</span>
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-bold flex items-center space-x-1">
-                          <X className="w-3 h-3" />
-                          <span>Tanpa Akses Input Data</span>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="shrink-0 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition"
-                  >
-                    Pilih Monitor
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleManualSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Username atau Email</label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: pe atau monitor"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Password atau 4-Digit PIN</label>
-                <div className="relative">
-                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="password"
-                    required
-                    placeholder="PIN: 1234 (PE) atau 0000 (Monitor)"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-600 leading-relaxed">
-                <span className="font-bold text-slate-800 block mb-0.5">Petunjuk Akses Akun:</span>
-                • <strong>Akun PE:</strong> User <code className="bg-white px-1 border rounded">pe</code> / PIN <code className="bg-white px-1 border rounded">1234</code> (Wewenang Penuh)<br/>
-                • <strong>Akun Monitor:</strong> User <code className="bg-white px-1 border rounded">monitor</code> / PIN <code className="bg-white px-1 border rounded">0000</code> (Pantau Saja, No Print, No Input)
-              </div>
-
+          <div>
+            <label
+              htmlFor="login-password-input"
+              className="block text-sm font-bold text-slate-900 mb-1.5"
+            >
+              Password
+            </label>
+            <div className="relative">
+              <input
+                id="login-password-input"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errorMsg) setErrorMsg(null);
+                }}
+                placeholder="Password"
+                autoComplete="current-password"
+                required
+                className="w-full pl-3.5 pr-9 py-2 text-sm text-slate-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#288390] focus:ring-2 focus:ring-[#288390]/20 placeholder:text-slate-400 transition-all"
+              />
               <button
-                type="submit"
-                className="w-full py-2.5 bg-[#1a3478] hover:bg-blue-900 text-white font-bold rounded-xl text-xs transition shadow-xs flex items-center justify-center space-x-2"
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
               >
-                <Lock className="w-4 h-4" />
-                <span>Masuk Sekarang</span>
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
-            </form>
-          )}
+            </div>
+          </div>
 
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition"
-          >
-            Tutup
-          </button>
-        </div>
-
+          <div className="pt-2">
+            <button
+              id="btn-submit-login"
+              type="submit"
+              className="w-full py-2.5 px-4 bg-[#288390] hover:bg-[#216d78] active:bg-[#1b5a63] text-white text-sm font-medium rounded-md shadow-2xs transition-colors cursor-pointer"
+            >
+              Log in
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

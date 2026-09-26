@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Smartphone, HardDrive, ShieldCheck, UserCheck, Download, CheckCircle, X, Share2, PlusSquare, Info, FileSpreadsheet } from 'lucide-react';
+import { Smartphone, HardDrive, ShieldCheck, UserCheck, Download, CheckCircle, X, Share2, PlusSquare, Info, FileSpreadsheet, LogOut } from 'lucide-react';
 import { AuthUser, DataSourceState } from '../types';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
@@ -7,6 +7,8 @@ interface TopUtilityBarProps {
   onOpenBackupModal: () => void;
   onOpenLoginModal: () => void;
   onOpenSheetModal?: () => void;
+  onOpenAccountAccess?: () => void;
+  onLogout?: () => void;
   dataSource?: DataSourceState;
   currentUser?: AuthUser;
 }
@@ -15,6 +17,8 @@ export const TopUtilityBar: React.FC<TopUtilityBarProps> = ({
   onOpenBackupModal,
   onOpenLoginModal,
   onOpenSheetModal,
+  onOpenAccountAccess,
+  onLogout,
   dataSource,
   currentUser
 }) => {
@@ -144,7 +148,20 @@ export const TopUtilityBar: React.FC<TopUtilityBarProps> = ({
               </>
             )}
 
-            {/* 3. PILIHAN PENGATURAN AKUN */}
+            {/* 3. PILIHAN PENGATURAN AKUN / GANTI AKUN */}
+            {currentUser?.canManageAccounts && onOpenAccountAccess && (
+              <button
+                type="button"
+                id="btn-topbar-account-access"
+                onClick={onOpenAccountAccess}
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#1a3478] hover:bg-blue-800 text-white border border-blue-500 text-[11px] font-black transition-all active:scale-95 shadow-2xs cursor-pointer"
+                title="Kelola Akses Akun & Bar Navigasi (Khusus PE)"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-red-400" />
+                <span>Akses Akun</span>
+              </button>
+            )}
+
             <button
               type="button"
               id="btn-topbar-account-settings"
@@ -154,18 +171,31 @@ export const TopUtilityBar: React.FC<TopUtilityBarProps> = ({
                   ? 'bg-blue-900/80 hover:bg-blue-800 text-blue-100 border-blue-600'
                   : 'bg-amber-950/80 hover:bg-amber-900 text-amber-200 border-amber-700'
               }`}
-              title="Buka Pengaturan Akun: Ganti peran antara Akun PE (Input & Edit Penuh) atau Akun Monitor (Hanya Pantau)"
+              title="Ganti Akun Pengguna"
             >
-              <ShieldCheck className={`w-3.5 h-3.5 ${currentUser?.role === 'PE' ? 'text-blue-300' : 'text-amber-400'}`} />
-              <span>Pengaturan Akun</span>
+              <UserCheck className={`w-3.5 h-3.5 ${currentUser?.role === 'PE' ? 'text-blue-300' : 'text-amber-400'}`} />
+              <span>{currentUser?.name || 'Pengguna'}</span>
               <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-bold ${
                 currentUser?.role === 'PE'
                   ? 'bg-blue-700 text-white'
                   : 'bg-amber-700 text-white'
               }`}>
-                {currentUser?.role === 'PE' ? 'Akun PE' : 'Monitor'}
+                {currentUser?.username || (currentUser?.role === 'PE' ? 'PE' : 'User')}
               </span>
             </button>
+
+            {onLogout && (
+              <button
+                type="button"
+                id="btn-topbar-logout"
+                onClick={onLogout}
+                className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-red-900/80 hover:bg-red-800 text-red-100 border border-red-700 text-[11px] font-bold transition-all active:scale-95 cursor-pointer"
+                title="Keluar ke Halaman Masuk (Login)"
+              >
+                <LogOut className="w-3.5 h-3.5 text-red-300" />
+                <span className="hidden sm:inline">Keluar</span>
+              </button>
+            )}
 
           </div>
 

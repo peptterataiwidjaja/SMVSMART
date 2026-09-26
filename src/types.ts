@@ -50,6 +50,7 @@ export interface BankDataModel {
   targetEfficiency: number; // Target Efisiensi Standar (%)
   description?: string; // Spesifikasi / Catatan Kritis
   updatedAt?: string;
+  createdBy?: string; // Akun pembuat / pengubah data
 }
 
 // Rekap Lembar Kerja Produksi Harian / Periodik
@@ -75,6 +76,7 @@ export interface MonthlyProductivityRecord {
   analysisStatus: 'optimal' | 'warning' | 'critical'; // Status Evaluasi Analisis
   analysisNote: string; // Kolom Analisis Produksi & Bottleneck
   note?: string; // Catatan operasional opsional
+  createdBy?: string; // Akun pembuat / penginput data
 }
 
 // Model Insiden / Hambatan Line & Disposisi Persetujuan PE dan FM
@@ -140,6 +142,7 @@ export interface StyleScheduleRecord {
   percentCompleted?: number; // Persentase realisasi terhadap target order
   notes?: string;
   updatedAt?: string;
+  createdBy?: string; // Akun pembuat / penginput jadwal
 }
 
 // Model Konflik Tumpang Tindih (Overlap) Hari OT dengan Style Baru
@@ -249,6 +252,7 @@ export interface ProcessEngineeringFinding {
   peInspector: string;
   verifiedDate?: string;
   notes?: string;
+  createdBy?: string;
 }
 
 // Analisis Fishbone (Ishikawa Diagram 6M)
@@ -295,25 +299,49 @@ export interface RepairDefectRecord {
   verifiedBy: string; // Verifikator (dikosongkan / manual)
   notes?: string;
   updatedAt?: string;
+  createdBy?: string;
 }
 
 // Keamanan & Akses Akun Pengguna
-export type UserRole = 'PE' | 'MONITOR';
+export type NavTabId =
+  | 'overview'
+  | 'style-schedule'
+  | 'scenario-analysis'
+  | 'monthly-recap'
+  | 'repair-defect'
+  | 'bank-data'
+  | 'daily-smv'
+  | 'revenue'
+  | 'data-matrix'
+  | 'account-access';
+
+export interface NavBarConfigItem {
+  id: NavTabId;
+  label: string;
+  shortLabel: string;
+  enabled: boolean;
+}
+
+export type UserRole = 'PE' | 'MONITOR' | 'STAFF';
 
 export interface AuthUser {
   id: string;
   username: string;
+  password?: string;
   name: string;
   email: string;
   role: UserRole;
   roleTitle: string;
   department: string;
-  canInputData: boolean; // Akun PE = true, Akun Monitor = false
-  canPrintPdf: boolean;  // Akun PE = true, Akun Monitor = false
-  canEditDelete: boolean;// Akun PE = true, Akun Monitor = false
-  canBackupRestore: boolean; // Akun PE = true, Akun Monitor = false (bisa ekspor saja)
+  canInputData: boolean;
+  canPrintPdf: boolean;
+  canEditDelete: boolean;
+  canBackupRestore: boolean;
+  canManageAccounts?: boolean;
+  allowedTabs?: NavTabId[];
   lastLogin?: string;
 }
+
 
 
 

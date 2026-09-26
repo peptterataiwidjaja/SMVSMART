@@ -22,6 +22,7 @@ import { MonthlyPlanModal } from './components/MonthlyPlanModal';
 import { RepairDefectView } from './components/RepairDefectView';
 import { WorkScenarioView } from './components/WorkScenarioView';
 import { LoginModal } from './components/LoginModal';
+import { AccountAccessView } from './components/AccountAccessView';
 import { CompanyLogo } from './components/CompanyLogo';
 import { INITIAL_LINES_DATA, computeSummary } from './data/defaultData';
 import { INITIAL_MONTHLY_RECAP } from './data/monthlyRecapData';
@@ -29,7 +30,17 @@ import { INITIAL_BANK_DATA } from './data/bankData';
 import { INITIAL_REPAIR_DEFECT_DATA } from './data/repairDefectData';
 import { loadSavedPEFindings, savePEFindings } from './data/peFindingsData';
 import { fetchGoogleSheetData, pushDataToAppsScript, parsePastedTabularData } from './services/sheetService';
-import { getStoredAuthUser, saveAuthUser } from './services/authService';
+import {
+  getStoredAuthUser,
+  saveAuthUser,
+  loadUserAccounts,
+  saveUserAccounts,
+  loadNavBarConfig,
+  saveNavBarConfig,
+  resetNavBarConfig,
+  isSessionAuthenticated,
+  setSessionAuthenticated
+} from './services/authService';
 import { exportReportToPdf } from './utils/pdfExport';
 import { detectLineIncidents, updateIncidentInStorage } from './utils/issueDetection';
 import { 
@@ -82,7 +93,8 @@ import {
   UrgentPushNotification,
   ProcessEngineeringFinding,
   RepairDefectRecord,
-  AuthUser
+  AuthUser,
+  NavBarConfigItem
 } from './types';
 import { 
   CheckCircle2, 
@@ -114,8 +126,11 @@ export default function App() {
   const [lines, setLines] = useState<LineData[]>(INITIAL_LINES_DATA);
   const [activeTab, setActiveTab] = useState<NavTabType>('overview');
   
-  // 2 Akses Keamanan: Akun PE (Full Input) & Akun Monitoring (Read-Only)
+  // Sistem Akses Akun & Konfigurasi Bar Navigasi oleh PE
+  const [userAccounts, setUserAccounts] = useState<AuthUser[]>(() => loadUserAccounts());
+  const [navBarConfig, setNavBarConfig] = useState<NavBarConfigItem[]>(() => loadNavBarConfig());
   const [currentUser, setCurrentUser] = useState<AuthUser>(() => getStoredAuthUser());
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => isSessionAuthenticated());
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);
@@ -183,9 +198,39 @@ export default function App() {
         setRepairRecords(loadSafeRepairDefects());
         setPeFindings(loadSafePEFindings());
         setUrgentNotifications(loadSafeUrgentNotifications());
+        setUserAccounts(loadUserAccounts());
+        setNavBarConfig(loadNavBarConfig());
+        setCurrentUser(getStoredAuthUser());
       }
     });
   }, []);
+
+  // Pastikan tab yang aktif sesuai dengan hak akses bar pengguna saat ini
+  useEffect(() => {
+    if (activeTab === 'account-access') {
+      if (!currentUser.canManageAccounts) {
+        const firstAllowed = navBarConfig.find(
+          b => b.enabled && (!currentUser.allowedTabs || currentUser.allowedTabs.includes(b.id))
+        );
+        if (firstAllowed) setActiveTab(firstAllowed.id);
+      }
+      return;
+    }
+    const barItem = navBarConfig.find(b => b.id === activeTab);
+    const isTabAllowed =
+      (!barItem || barItem.enabled) &&
+      (!currentUser.allowedTabs || currentUser.allowedTabs.includes(activeTab));
+    if (!isTabAllowed) {
+      const firstAllowed = navBarConfig.find(
+        b => b.enabled && (!currentUser.allowedTabs || currentUser.allowedTabs.includes(b.id))
+      );
+      if (firstAllowed) {
+        setActiveTab(firstAllowed.id);
+      } else if (currentUser.canManageAccounts) {
+        setActiveTab('account-access');
+      }
+    }
+  }, [currentUser, navBarConfig, activeTab]);
 
   // Filter monthly recap records for the selected month
   const filteredMonthlyRecap = React.useMemo(() => {
@@ -561,15 +606,19 @@ export default function App() {
     });
   }, []);
 
-  // Save / Update monthly recap record with automatic target reduction
+  // Save / Update monthly recap record with automatic target reduction & user integration
   const handleSaveRecapRecord = (record: MonthlyProductivityRecord) => {
+    const recordWithUser: MonthlyProductivityRecord = {
+      ...record,
+      createdBy: currentUser.name || currentUser.username
+    };
     setMonthlyRecap(prev => {
-      const exists = prev.some(r => r.id === record.id);
+      const exists = prev.some(r => r.id === recordWithUser.id);
       let updated: MonthlyProductivityRecord[];
       if (exists) {
-        updated = prev.map(r => r.id === record.id ? record : r);
+        updated = prev.map(r => r.id === recordWithUser.id ? recordWithUser : r);
       } else {
-        updated = [record, ...prev];
+        updated = [recordWithUser, ...prev];
       }
       saveSafeMonthlyRecap(updated);
       return updated;
@@ -606,34 +655,44 @@ export default function App() {
 
   // Simpan Perencanaan Bulanan (Model, Target Order, Target Harian, SMV, Mulai Kapan)
   const handleSaveMonthlyPlan = (planData: StyleScheduleRecord) => {
+    const planWithUser: StyleScheduleRecord = {
+      ...planData,
+      createdBy: currentUser.name || currentUser.username
+    };
     setStyleSchedules(prev => {
-      const exists = prev.some(s => s.id === planData.id);
+      const exists = prev.some(s => s.id === planWithUser.id);
       let updated: StyleScheduleRecord[];
       if (exists) {
-        updated = prev.map(s => s.id === planData.id ? planData : s);
+        updated = prev.map(s => s.id === planWithUser.id ? planWithUser : s);
       } else {
-        updated = [planData, ...prev];
+        updated = [planWithUser, ...prev];
       }
       saveSafeSchedules(updated);
       return updated;
     });
-    showToast('success', `Perencanaan bulanan model ${planData.styleName} berhasil dibuat. Input harian otomatis akan mengurangi target.`);
+    showToast('success', `Perencanaan bulanan model ${planData.styleName} oleh ${currentUser.name} berhasil dibuat.`);
   };
 
   // Repair & Defect Handlers
   const handleSaveRepairRecord = (record: RepairDefectRecord) => {
+    const recordWithUser: RepairDefectRecord = {
+      ...record,
+      picName: record.picName || currentUser.name,
+      verifiedBy: record.verifiedBy || currentUser.name,
+      createdBy: currentUser.name || currentUser.username
+    };
     setRepairRecords(prev => {
-      const exists = prev.some(r => r.id === record.id);
+      const exists = prev.some(r => r.id === recordWithUser.id);
       let updated: RepairDefectRecord[];
       if (exists) {
-        updated = prev.map(r => r.id === record.id ? record : r);
+        updated = prev.map(r => r.id === recordWithUser.id ? recordWithUser : r);
       } else {
-        updated = [record, ...prev];
+        updated = [recordWithUser, ...prev];
       }
       saveSafeRepairDefects(updated);
       return updated;
     });
-    showToast('success', `Data defect/repair ${record.lineName} (${record.style}) berhasil disimpan.`);
+    showToast('success', `Data defect/repair ${record.lineName} (${record.style}) oleh ${currentUser.name} berhasil disimpan.`);
   };
 
   const handleDeleteRepairRecord = (id: string) => {
@@ -657,18 +716,22 @@ export default function App() {
 
   // Save / Update Bank Data model
   const handleSaveBankData = (model: BankDataModel) => {
+    const modelWithUser: BankDataModel = {
+      ...model,
+      createdBy: currentUser.name || currentUser.username
+    };
     setBankDataModels(prev => {
-      const exists = prev.some(m => m.id === model.id);
+      const exists = prev.some(m => m.id === modelWithUser.id);
       let updated: BankDataModel[];
       if (exists) {
-        updated = prev.map(m => m.id === model.id ? model : m);
+        updated = prev.map(m => m.id === modelWithUser.id ? modelWithUser : m);
       } else {
-        updated = [model, ...prev];
+        updated = [modelWithUser, ...prev];
       }
       saveSafeBankData(updated);
       return updated;
     });
-    showToast('success', `Model ${model.modelCode} berhasil disimpan ke Bank Data!`);
+    showToast('success', `Model ${model.modelCode} berhasil disimpan ke Bank Data oleh ${currentUser.name}!`);
   };
 
   // Delete Bank Data model
@@ -690,13 +753,17 @@ export default function App() {
 
   // Save Style Schedule Record
   const handleSaveSchedule = (record: StyleScheduleRecord) => {
+    const recordWithUser: StyleScheduleRecord = {
+      ...record,
+      createdBy: currentUser.name || currentUser.username
+    };
     setStyleSchedules(prev => {
-      const exists = prev.some(s => s.id === record.id);
+      const exists = prev.some(s => s.id === recordWithUser.id);
       let updated: StyleScheduleRecord[];
       if (exists) {
-        updated = prev.map(s => s.id === record.id ? record : s);
+        updated = prev.map(s => s.id === recordWithUser.id ? recordWithUser : s);
       } else {
-        updated = [record, ...prev];
+        updated = [recordWithUser, ...prev];
       }
       saveSafeSchedules(updated);
 
@@ -740,13 +807,18 @@ export default function App() {
 
   // Process Engineering Finding Handlers
   const handleSavePEFinding = (finding: ProcessEngineeringFinding) => {
+    const findingWithUser: ProcessEngineeringFinding = {
+      ...finding,
+      peInspector: finding.peInspector || currentUser.name,
+      createdBy: currentUser.name || currentUser.username
+    };
     setPeFindings(prev => {
-      const exists = prev.some(f => f.id === finding.id);
+      const exists = prev.some(f => f.id === findingWithUser.id);
       let updated: ProcessEngineeringFinding[];
       if (exists) {
-        updated = prev.map(f => f.id === finding.id ? finding : f);
+        updated = prev.map(f => f.id === findingWithUser.id ? findingWithUser : f);
       } else {
-        updated = [finding, ...prev];
+        updated = [findingWithUser, ...prev];
       }
       saveSafePEFindings(updated);
       return updated;
@@ -777,6 +849,31 @@ export default function App() {
     window.print();
   };
 
+  // Keluar dari sesi saat ini ke layar masuk (Login)
+  const handleLogout = () => {
+    setSessionAuthenticated(false);
+    setIsLoggedIn(false);
+  };
+
+  // Saat masuk pertama kali atau belum login: Tampilkan hanya bar User dan Password sesuai tampilan referensi
+  if (!isLoggedIn) {
+    return (
+      <LoginModal
+        isOpen={true}
+        fullScreen={true}
+        currentUser={currentUser}
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          saveAuthUser(user);
+          setIsLoggedIn(true);
+          setUserAccounts(loadUserAccounts());
+          setNavBarConfig(loadNavBarConfig());
+          showToast('success', `Selamat datang, ${user.name}!`);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-['Plus_Jakarta_Sans',sans-serif]">
       
@@ -785,6 +882,12 @@ export default function App() {
         onOpenBackupModal={() => setIsBackupModalOpen(true)}
         onOpenLoginModal={() => setIsLoginModalOpen(true)}
         onOpenSheetModal={() => setIsSheetModalOpen(true)}
+        onOpenAccountAccess={
+          currentUser?.canManageAccounts
+            ? () => setActiveTab('account-access')
+            : undefined
+        }
+        onLogout={handleLogout}
         dataSource={dataSource}
         currentUser={currentUser}
       />
@@ -817,6 +920,7 @@ export default function App() {
         onOpenBackupModal={() => setIsBackupModalOpen(true)}
         currentUser={currentUser}
         onOpenLoginModal={() => setIsLoginModalOpen(true)}
+        navBarConfig={navBarConfig}
       />
 
       {/* Floating Notification Toast */}
@@ -1264,6 +1368,38 @@ export default function App() {
           </div>
         )}
 
+        {/* Tab: AKSES AKUN & PENGATURAN BAR NAVIGASI (Khusus PE) */}
+        {activeTab === 'account-access' && currentUser?.canManageAccounts && (
+          <AccountAccessView
+            currentUser={currentUser}
+            accounts={userAccounts}
+            navBarConfig={navBarConfig}
+            onSaveAccounts={(updatedAccounts) => {
+              setUserAccounts(updatedAccounts);
+              saveUserAccounts(updatedAccounts);
+              const updatedSelf = updatedAccounts.find(u => u.id === currentUser.id);
+              if (updatedSelf) {
+                setCurrentUser(updatedSelf);
+                saveAuthUser(updatedSelf);
+              }
+              snapshotToMasterVault();
+              showToast('success', 'Perubahan akses akun berhasil disimpan.');
+            }}
+            onSaveNavBarConfig={(updatedBars) => {
+              setNavBarConfig(updatedBars);
+              saveNavBarConfig(updatedBars);
+              snapshotToMasterVault();
+              showToast('success', 'Konfigurasi nama & akses bar navigasi berhasil disimpan.');
+            }}
+            onResetNavBarConfig={() => {
+              const resetBars = resetNavBarConfig();
+              setNavBarConfig(resetBars);
+              snapshotToMasterVault();
+              showToast('info', 'Nama & status bar navigasi dikembalikan ke pengaturan awal.');
+            }}
+          />
+        )}
+
       </main>
 
       {/* Clean Minimalist Footer */}
@@ -1403,7 +1539,7 @@ export default function App() {
         onRestoreData={handleRestoreData}
       />
 
-      {/* Modal Autentikasi 2 Akses (Akun PE vs Akun Pemantau) */}
+      {/* Modal Ganti Akun Pengguna (Hanya Bar User & Password) */}
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
@@ -1411,12 +1547,16 @@ export default function App() {
         onLoginSuccess={(user) => {
           setCurrentUser(user);
           saveAuthUser(user);
-          showToast('success', `Berhasil beralih ke: ${user.name} (${user.role === 'PE' ? 'Akses Penuh Input & Edit' : 'Akses Monitoring Sahaja'})`);
+          setIsLoggedIn(true);
+          setUserAccounts(loadUserAccounts());
+          setNavBarConfig(loadNavBarConfig());
+          showToast('success', `Berhasil masuk sebagai: ${user.name}`);
         }}
         onSelectUser={(user) => {
           setCurrentUser(user);
           saveAuthUser(user);
-          showToast('success', `Berhasil beralih ke: ${user.name} (${user.role === 'PE' ? 'Akses Penuh Input & Edit' : 'Akses Monitoring Sahaja'})`);
+          setIsLoggedIn(true);
+          showToast('success', `Berhasil masuk sebagai: ${user.name}`);
         }}
       />
 
